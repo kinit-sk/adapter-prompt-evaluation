@@ -1,5 +1,10 @@
+import copy
+import inspect
 import torch
 import os
+from contextlib import nullcontext
+import accelerate
+from accelerate.hooks import add_hook_to_module, remove_hook_from_module
 
 WEIGHTS_NAME = 'adapter_model.bin'
 
@@ -108,3 +113,153 @@ def load_adapter_weights(model_id, device=None):
     adapter_weights = torch.load(os.path.join(
         model_id, WEIGHTS_NAME), map_location=device)
     return adapter_weights
+
+
+class ModulesToSaveWrapper(torch.nn.Module):
+    def __init__(self, module_to_save, adapter_name):
+        super().__init__()
+        self.original_module = module_to_save
+        self.modules_to_save = torch.nn.ModuleDict({})
+        self._active_adapter = adapter_name
+        self._disable_adapters = False
+        self.update(adapter_name)
+        self.check_module()
+
+    def check_module(self):
+        """Perform some sanity checks on the module to ensure that it works"""
+        # Try to anticipate some modules that users could try to target that would not work.
+        # Note: It's not possible to check hasattr(module, "forward"), since that returns True for ModuleDict and
+        # ModuleList, even though their forward methods cannot be called
+        forbidden_classes = (torch.nn.ModuleDict, torch.nn.ModuleList,
+                             torch.nn.ParameterDict, torch.nn.ParameterList)
+        if isinstance(self.original_module, forbidden_classes):
+            cls_name = self.original_module.__class__.__name__
+            raise TypeError(
+                f"modules_to_save cannot be applied to modules of type {cls_name}")
+
+    @property
+    def disable_adapters(self) -> bool:
+        # use a property to ensure that disable_adapters is not set directly, instead use the enable_adapters method
+        return self._disable_adapters
+
+    @property
+    def active_adapter(self) -> str:
+        # use a property to ensure that active_adapter is not set directly, instead use the set_adapter method
+        return self._active_adapter
+
+    @property
+    def weight(self):
+        if self.active_adapter not in self.modules_to_save:
+            return self.original_module.weight
+        return self.modules_to_save[self.active_adapter].weight
+
+    def update(self, adapter_name):
+        context_manager = nullcontext()
+        for _, param in self.original_module.named_parameters():
+            num_params = param.numel()
+            # if using DS Zero 3 and the weights are initialized empty
+            if num_params == 0 and hasattr(param, "ds_numel"):
+                import deepspeed
+
+                context_manager = deepspeed.zero.GatheredParameters(
+                    self.original_module.parameters(), modifier_rank=0)
+                break
+        with context_manager:
+            self.modules_to_save.update(torch.nn.ModuleDict(
+                {adapter_name: copy.deepcopy(self.original_module)}))
+
+        if hasattr(self.modules_to_save[adapter_name], "_hf_hook"):
+            old_hook = self.modules_to_save[adapter_name]._hf_hook
+            new_hook = self._create_new_hook(old_hook)
+            remove_hook_from_module(self.modules_to_save[adapter_name])
+            add_hook_to_module(self.modules_to_save[adapter_name], new_hook)
+
+        self.original_module.requires_grad_(False)
+        if adapter_name == self.active_adapter:
+            self.modules_to_save[adapter_name].requires_grad_(True)
+
+    def _create_new_hook(self, old_hook):
+        r"""
+        Creates a new hook based on the old hook. Use it only if you know what you are doing !
+        """
+        old_hook_cls = getattr(accelerate.hooks, old_hook.__class__.__name__)
+        old_hook_attr = old_hook.__dict__
+        filtered_old_hook_attr = {}
+        old_hook_init_signature = inspect.signature(old_hook_cls.__init__)
+        for k in old_hook_attr.keys():
+            if k in old_hook_init_signature.parameters:
+                filtered_old_hook_attr[k] = old_hook_attr[k]
+        new_hook = old_hook_cls(**filtered_old_hook_attr)
+        return new_hook
+
+    def forward(self, *args, **kwargs):
+        if self.disable_adapters or (self.active_adapter not in self.modules_to_save):
+            return self.original_module(*args, **kwargs)
+        return self.modules_to_save[self.active_adapter](*args, **kwargs)
+
+    def enable_adapters(self, enabled: bool):
+        """Toggle the enabling and disabling of adapters
+
+        Takes care of setting the requires_grad flag for the adapter weights.
+
+        Args:
+            enabled (bool): True to enable adapters, False to disable adapters
+        """
+        if self._disable_adapters is not enabled:
+            # already in the desired state, do nothing
+            return
+
+        if enabled:
+            self.original_module.requires_grad_(False)
+            self.modules_to_save[self.active_adapter].requires_grad_(True)
+            self._disable_adapters = False
+        else:
+            self.original_module.requires_grad_(True)
+            self.modules_to_save.requires_grad_(False)
+            self._disable_adapters = True
+
+    def set_adapter(self, adapter_name: str):
+        """Set the active adapter
+
+        Additionally, this function will set the specified adapter to trainable (i.e., requires_grad=True). If this is
+        not desired, use the following code.
+
+        ```py
+        >>> for name, param in model_peft.named_parameters():
+        ...     if ...:  # some check on name (ex. if 'lora' in name)
+        ...         param.requires_grad = False
+        ```
+
+        Args:
+            adapter_name (str): The name of the adapter to set as active
+        """
+        if adapter_name not in self.modules_to_save:
+            raise ValueError(
+                f"Adapter {adapter_name} not found in {self.modules_to_save.keys()}")
+
+        self.modules_to_save[self.active_adapter].requires_grad_(False)
+        self.modules_to_save[adapter_name].requires_grad_(True)
+        self._active_adapter = adapter_name
+
+
+def _get_submodules(model, key):
+    parent = model.get_submodule(".".join(key.split(".")[:-1]))
+    target_name = key.split(".")[-1]
+    target = model.get_submodule(key)
+    return parent, target, target_name
+
+
+def _set_trainable(model, adapter_name):
+    key_list = [key for key, _ in model.named_modules()]
+    for key in key_list:
+        target_module_found = any(key.endswith(target_key)
+                                  for target_key in model.modules_to_save)
+        if target_module_found:
+            parent, target, target_name = _get_submodules(model, key)
+            if isinstance(target, ModulesToSaveWrapper):
+                target.update(adapter_name)
+                target.set_adapter(target.active_adapter)
+            else:
+                new_module = ModulesToSaveWrapper(target, adapter_name)
+                new_module.set_adapter(adapter_name)
+                setattr(parent, target_name, new_module)

@@ -4,8 +4,6 @@ from transformers import PreTrainedModel
 from copy import deepcopy
 import inspect
 from huggingface_hub import hf_hub_download
-from prompt_tuning.model import PromptEmbedding
-from prompt_tuning.utils import _prepare_prompt_learning_config, _get_batch_size, get_peft_model_state_dict, infer_device, load_adapter_weights, set_peft_model_state_dict
 from transformers.utils import PushToHubMixin
 from accelerate import dispatch_model, infer_auto_device_map
 from accelerate.utils import get_balanced_memory
@@ -13,6 +11,8 @@ from accelerate.hooks import AlignDevicesHook, add_hook_to_module, remove_hook_f
 import logging
 
 from prompt_tuning.config import PromptTuningConfig
+from prompt_tuning.model import PromptEmbedding
+from prompt_tuning.utils import _prepare_prompt_learning_config, _get_batch_size, get_peft_model_state_dict, infer_device, load_adapter_weights, set_peft_model_state_dict, _set_trainable
 
 logging.basicConfig(level=logging.INFO)
 
@@ -507,3 +507,78 @@ class PeftModelForCausalLM(PeftModel):
             model_kwargs["input_ids"] = None
 
         return model_kwargs
+
+
+class PeftModelForQuestionAnswering(PeftModel):
+    def __init__(self, model, peft_config, adapter_name='default'):
+        super().__init__(model, peft_config, adapter_name=adapter_name)
+        if self.modules_to_save is None:
+            self.modules_to_save = {"qa_outputs"}
+        else:
+            self.modules_to_save.update({"qa_outputs"})
+
+        for name, _ in self.base_model.named_children():
+            if any(module_name in name for module_name in self.modules_to_save):
+                self.cls_layer_name = name
+                break
+
+        # to make sure classifier layer is trainable
+        _set_trainable(self, adapter_name)
+
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        inputs_embeds=None,
+        start_positions=None,
+        end_positions=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+        **kwargs,
+    ):
+        prompt_config = self._peft_config[self.adapter_name]
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        batch_size = _get_batch_size(input_ids, inputs_embeds)
+
+        num_virtual_tokens = prompt_config.num_virtual_tokens
+        if prompt_config.fusion == 'cat':
+            num_virtual_tokens *= 2
+
+        if attention_mask is not None:
+            prefix_attention_mask = torch.ones(
+                batch_size, num_virtual_tokens).to(attention_mask.device)
+            attention_mask = torch.cat(
+                (prefix_attention_mask, attention_mask), dim=1)
+        if kwargs.get("position_ids", None) is not None:
+            kwargs["position_ids"] = None
+
+        kwargs.update({
+            'attention_mask': attention_mask,
+            'start_positions': start_positions,
+            'end_positions': end_positions,
+            'output_attentions': output_attentions,
+            'output_hidden_states': output_hidden_states,
+            'return_dict': return_dict,
+        })
+
+        if kwargs.get("token_type_ids", None) is not None:
+            kwargs["token_type_ids"] = torch.cat(
+                (
+                    torch.zeros(batch_size, num_virtual_tokens).to(
+                        self.word_embeddings.weight.device),
+                    kwargs["token_type_ids"],
+                ),
+                dim=1,
+            ).long()
+
+        if inputs_embeds is None:
+            inputs_embeds = self.word_embeddings(input_ids)
+
+        prompts = self.get_prompt(batch_size=batch_size)
+        prompts = prompts.to(inputs_embeds.dtype)
+        inputs_embeds = torch.cat((prompts, inputs_embeds), dim=1)
+        return self.base_model(inputs_embeds=inputs_embeds, **kwargs)
