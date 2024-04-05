@@ -13,6 +13,7 @@ from tasks.tasks import TaskDataset
 from train.sampling import all_mixing, proportional_mixing
 from train.trainer import CustomTrainer
 from config_utils import get_config, get_huggingface_config, get_wandb_config
+from config import Config
 from utils import freeze_parameters, get_promptinit, get_train_type, unfreeze_parameters
 
 
@@ -141,7 +142,8 @@ if __name__ == '__main__':
 
     wandb_config = get_wandb_config("../configs/api.conf")
     huggingface_config = get_huggingface_config("../configs/api.conf")
-    config = get_config(args.config_path)
+    # config = get_config(args.config_path)
+    config = Config.from_yaml(args.config_path)
 
     os.environ["WANDB_API_KEY"] = wandb_config.WANDB_API_KEY
     os.environ["WANDB_USERNAME"] = wandb_config.WANDB_USERNAME

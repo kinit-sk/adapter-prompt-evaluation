@@ -8,7 +8,7 @@ def get_args():
     parser.add_argument(
         '--config-path',
         type=str,
-        default='./configs/language_configs/config.yaml',
+        default='./configs/config.yaml',
         help='Path to config file'
     )
     parser.add_argument(
@@ -43,3 +43,5 @@ def get_args():
         action='store_true',
         help='Use huggingface trainer'
     )
+
+    return parser.parse_args()
