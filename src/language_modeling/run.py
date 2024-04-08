@@ -412,10 +412,10 @@ def main():
                                data_args.dataset_name or "mlm")
 
     # Initialize our Trainer
-    if data_args.t5_modeling:
-        trainer_class = AdapterTrainer if adapter_args.train_adapter else Seq2SeqTrainer
-    else:
-        trainer_class = AdapterTrainer if adapter_args.train_adapter else Trainer
+    # if data_args.t5_modeling:
+    #     trainer_class = AdapterTrainer if adapter_args.train_adapter else Seq2SeqTrainer
+    # else:
+    trainer_class = AdapterTrainer if adapter_args.train_adapter else Trainer
     trainer = trainer_class(
         model=model,
         args=training_args,
