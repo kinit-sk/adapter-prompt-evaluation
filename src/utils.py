@@ -32,12 +32,12 @@ def get_train_type(args):
         return 'prompt'
 
 
-def get_promptinit(config):
-    if config.init_type == 'sampled':
+def get_promptinit(init_type):
+    if init_type == 'sampled':
         return PromptTuningInit.SAMPLED
-    elif config.init_type == 'text':
+    elif init_type == 'text':
         return PromptTuningInit.TEXT
-    elif config.init_type == 'random':
+    elif init_type == 'random':
         return PromptTuningInit.RANDOM
-    elif config.init_type == 'class':
+    elif init_type == 'class':
         return PromptTuningInit.CLASS
