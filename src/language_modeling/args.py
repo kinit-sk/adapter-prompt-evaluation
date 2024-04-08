@@ -111,6 +111,9 @@ class DataTrainingArguments:
     mlm_probability: float = field(
         default=0.15, metadata={"help": "Ratio of tokens to mask for masked language modeling loss"}
     )
+    mean_noise_span_length: float = field(
+        default=3.0, metadata={"help": "Mean span length of noise for span corruption."}
+    )
     line_by_line: bool = field(
         default=False,
         metadata={

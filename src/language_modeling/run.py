@@ -4,8 +4,7 @@ import os
 import sys
 from itertools import chain
 
-import datasets
-from datasets import load_dataset
+from datasets import load_dataset, DatasetDict
 from transformers.testing_utils import CaptureLogger
 
 import adapters
@@ -18,6 +17,7 @@ from transformers import (
     DataCollatorForLanguageModeling,
     HfArgumentParser,
     Trainer,
+    Seq2SeqTrainer,
     TrainingArguments,
     is_torch_tpu_available,
     set_seed,
@@ -58,25 +58,40 @@ def main():
     # TODO: Create custom Dataloader that will handle local datasets and also datasets from HF
     if data_args.dataset_name is not None:
         dataset_name = 'wikimedia/wikipedia'
+        # dataset_name = 'wikitext'
         # Downloading and loading a dataset from the hub.
-        raw_datasets = load_dataset(
-            dataset_name,
-            data_args.dataset_config_name,
-            use_auth_token=True if model_args.use_auth_token else None,
-        )
-        if "validation" not in raw_datasets.keys():
-            raw_datasets["validation"] = load_dataset(
+        raw_datasets = DatasetDict({
+            "train": load_dataset(
                 dataset_name,
                 data_args.dataset_config_name,
-                split=f"train[:{data_args.validation_split_percentage}%]",
+                split=f"train[:1000000]",
                 use_auth_token=True if model_args.use_auth_token else None,
-            )
-            raw_datasets["train"] = load_dataset(
+            ),
+            "validation": load_dataset(
                 dataset_name,
                 data_args.dataset_config_name,
-                split=f"train[{data_args.validation_split_percentage}%:]",
+                split="train[1000000:1100000]",
                 use_auth_token=True if model_args.use_auth_token else None,
             )
+        })
+        # raw_datasets['train'] = load_dataset(
+        #     dataset_name,
+        #     data_args.dataset_config_name,
+        #     use_auth_token=True if model_args.use_auth_token else None,
+        # )
+        # if "validation" not in raw_datasets.keys():
+        #     raw_datasets["validation"] = load_dataset(
+        #         dataset_name,
+        #         data_args.dataset_config_name,
+        #         split=f"train[:{data_args.validation_split_percentage}%]",
+        #         use_auth_token=True if model_args.use_auth_token else None,
+        #     )
+        #     raw_datasets["train"] = load_dataset(
+        #         dataset_name,
+        #         data_args.dataset_config_name,
+        #         split=f"train[{data_args.validation_split_percentage}%:]",
+        #         use_auth_token=True if model_args.use_auth_token else None,
+        #     )
     else:
         data_files = {}
         if data_args.train_file is not None:
@@ -136,7 +151,6 @@ def main():
         model = get_model(
             model_args=model_args,
             config=config,
-            seed=training_args.seed,
             clm=data_args.clm,
             t5_modeling=data_args.t5_modeling
         )
@@ -163,6 +177,8 @@ def main():
         )
         model = freeze_parameters(model)
         unfreeze_parameters(model, f'{prompt_args.language}_prompt')
+
+        print(model)
 
     # We resize the embeddings only when necessary to avoid index errors. If you are creating a model from scratch
     # on a small vocab and want a smaller embedding size, remove this test.
@@ -273,7 +289,7 @@ def main():
             def tokenize_function(examples):
                 return tokenizer(examples[text_column_name], return_attention_mask=False)
 
-            tokenized_datasets = datasets.map(
+            tokenized_datasets = raw_datasets.map(
                 tokenize_function,
                 batched=True,
                 num_proc=data_args.preprocessing_num_workers,
@@ -368,7 +384,17 @@ def main():
                 preds = preds[mask]
                 return metric.compute(predictions=preds, references=labels)
 
-    if not data_args.clm:
+    if data_args.t5_modeling:
+        data_collator = DataCollatorForT5MLM(
+            tokenizer=tokenizer,
+            noise_density=data_args.mlm_probability,
+            mean_noise_span_length=data_args.mean_noise_span_length,
+            input_length=data_args.max_seq_length,
+            target_length=targets_length,
+            pad_token_id=model.config.pad_token_id,
+            decoder_start_token_id=model.config.decoder_start_token_id,
+        )
+    elif not data_args.clm:
         # Data collator
         # This one will take care of randomly masking the tokens.
         pad_to_multiple_of_8 = data_args.line_by_line and training_args.fp16 and not data_args.pad_to_max_length
@@ -376,16 +402,6 @@ def main():
             tokenizer=tokenizer,
             mlm_probability=data_args.mlm_probability,
             pad_to_multiple_of=8 if pad_to_multiple_of_8 else None,
-        )
-    elif data_args.t5_modeling:
-        data_collator = DataCollatorForT5MLM(
-            tokenizer=tokenizer,
-            noise_density=data_args.mlm_probability,
-            mean_noise_span_length=data_args.mean_noise_span_length,
-            input_length=max_seq_length,
-            target_length=targets_length,
-            pad_token_id=model.config.pad_token_id,
-            decoder_start_token_id=model.config.decoder_start_token_id,
         )
     else:
         data_collator = default_data_collator
@@ -396,7 +412,10 @@ def main():
                                data_args.dataset_name or "mlm")
 
     # Initialize our Trainer
-    trainer_class = AdapterTrainer if adapter_args.train_adapter else Trainer
+    if data_args.t5_modeling:
+        trainer_class = AdapterTrainer if adapter_args.train_adapter else Seq2SeqTrainer
+    else:
+        trainer_class = AdapterTrainer if adapter_args.train_adapter else Trainer
     trainer = trainer_class(
         model=model,
         args=training_args,

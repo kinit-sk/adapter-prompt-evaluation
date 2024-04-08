@@ -5,7 +5,13 @@ from transformers import (
     BatchEncoding,
     PreTrainedTokenizerBase,
 )
-from transformers.models.t5.modeling_flax_t5 import shift_tokens_right
+import torch
+from transformers.models.bart.modeling_bart import shift_tokens_right
+
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 def compute_input_and_target_lengths(inputs_length, noise_density, mean_noise_span_length):
@@ -141,6 +147,9 @@ class DataCollatorForT5MLM:
                 f" {self.target_length}."
             )
 
+        batch = BatchEncoding(
+            {k: torch.from_numpy(v) for k, v in batch.items()}
+        )
         # to check that tokens are correctly preprocessed, one can run `self.tokenizer.batch_decode(input_ids)` and `self.tokenizer.batch_decode(labels)` here...
         batch["decoder_input_ids"] = shift_tokens_right(
             batch["labels"], self.pad_token_id, self.decoder_start_token_id
