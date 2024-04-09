@@ -9,7 +9,7 @@ import logging
 
 from prompt_tuning import PromptTuningForSeq2SeqLM
 
-logger = logging.get_logger(__name__)
+logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
