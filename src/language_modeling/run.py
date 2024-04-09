@@ -29,6 +29,7 @@ from utils import get_promptinit, freeze_parameters, unfreeze_parameters
 from language_modeling.t5_mlm import compute_input_and_target_lengths, DataCollatorForT5MLM
 from language_modeling.args import ModelArguments, DataTrainingArguments, PromptTuningArguments
 from language_modeling.utils import get_model
+from language_modeling.PromptSeq2SeqTrainer import PromptSeq2SeqTrainer
 
 logger = logging.getLogger(__name__)
 
@@ -412,10 +413,10 @@ def main():
                                data_args.dataset_name or "mlm")
 
     # Initialize our Trainer
-    # if data_args.t5_modeling:
-    #     trainer_class = AdapterTrainer if adapter_args.train_adapter else Seq2SeqTrainer
-    # else:
-    trainer_class = AdapterTrainer if adapter_args.train_adapter else Trainer
+    if prompt_args.prompt_tuning:
+        trainer_class = AdapterTrainer if adapter_args.train_adapter else PromptSeq2SeqTrainer
+    else:
+        trainer_class = AdapterTrainer if adapter_args.train_adapter else Trainer
     trainer = trainer_class(
         model=model,
         args=training_args,
