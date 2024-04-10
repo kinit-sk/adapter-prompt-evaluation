@@ -200,7 +200,7 @@ class PromptTuningArguments:
         default=False, metadata={"help": "Whether to use a task prompt for prompt tuning."}
     )
     fusion: Optional[str] = field(
-        default="cat", metadata={"help": "The fusion method to use for prompt tuning."}
+        default="none", metadata={"help": "The fusion method to use for prompt tuning."}
     )
     language: Optional[str] = field(
         default="english", metadata={"help": "The language to use."}

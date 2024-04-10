@@ -143,7 +143,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
     def get_prompt(self, batch_size):
         prompt_config = self._peft_config[self.adapter_name]
 
-        if list(self.prompt_encoder.keys()) == 1:
+        if len(list(self.prompt_encoder.keys())) == 1:
             prompt_encoder = self.prompt_encoder[self.adapter_name]
 
             prompt_tokens = (
@@ -305,6 +305,7 @@ class PromptTuningForSeq2SeqLM(PeftModel):
 
         num_virtual_tokens = prompt_config.num_virtual_tokens
         if prompt_config.fusion == 'cat':
+            logging.info('Using Concatenation')
             num_virtual_tokens *= 2
 
         if decoder_attention_mask is not None:
@@ -358,6 +359,7 @@ class PromptTuningForSeq2SeqLM(PeftModel):
 
             num_virtual_tokens = prompt_config.num_virtual_tokens
             if prompt_config.fusion == 'cat':
+                logging.info('Using Concatenation')
                 num_virtual_tokens *= 2
 
             kwargs = deepcopy(kwargs)

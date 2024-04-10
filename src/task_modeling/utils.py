@@ -26,24 +26,27 @@ def get_updated_model(model, model_args, adapter_args, prompt_args, dataset_name
 
     if language_adapter_type == 'none' and task_adapter_type == 'none':
         return model
-    elif language_adapter_type == 'none' and task_adapter_type != 'adapter':
+    elif language_adapter_type == 'none' and task_adapter_type == 'adapter':
         setup_adapter_training(model, adapter_args, dataset_name or "mlm")
+        return model
     elif language_adapter_type == 'adapter' and task_adapter_type == 'adapter':
         setup_adapter_training(model, adapter_args, dataset_name or "mlm")
+        return model
     elif language_adapter_type == 'none' and task_adapter_type == 'prompt':
         peft_config = PromptTuningConfig(
             task_type=TaskType.SEQ_2_SEQ_LM,
             prompt_tuning_init=get_promptinit(prompt_args.prompt_tuning_init),
             num_virtual_tokens=prompt_args.num_virtual_tokens,
             tokenizer_name_or_path=model_args.model_name_or_path,
-            prompt_tuning_init_text=prompt_args.prompt_tuning_init_text
+            prompt_tuning_init_text=prompt_args.prompt_tuning_init_text,
+            fusion=prompt_args.fusion
         )
 
         model = get_prompt_tuning_model(
-            model, peft_config=peft_config, adapter_name=f'{prompt_args.language}_prompt')
+            model, peft_config=peft_config, adapter_name=f'{dataset_name}_prompt')
 
         model = freeze_parameters(model)
-        unfreeze_parameters(model, f'{prompt_args.language}_prompt')
+        unfreeze_parameters(model, f'{dataset_name}_prompt')
         print(model)
         return model
     elif language_adapter_type == 'adapter' and task_adapter_type == 'prompt':
@@ -62,7 +65,8 @@ def get_updated_model(model, model_args, adapter_args, prompt_args, dataset_name
             num_virtual_tokens=prompt_args.num_virtual_tokens,
             tokenizer_name_or_path=model_args.model_name_or_path,
             prompt_tuning_init_text=prompt_args.prompt_tuning_init_text,
-            task_prompt=True
+            task_prompt=True,
+            fusion=prompt_args.fusion
         )
 
         model = get_prompt_tuning_model(
@@ -95,7 +99,8 @@ def get_updated_model(model, model_args, adapter_args, prompt_args, dataset_name
             num_virtual_tokens=prompt_args.num_virtual_tokens,
             tokenizer_name_or_path=model_args.model_name_or_path,
             prompt_tuning_init_text=prompt_args.prompt_tuning_init_text,
-            task_prompt=True
+            task_prompt=True,
+            fusion=prompt_args.fusion
         )
 
         model = PromptTuningForSeq2SeqLM.from_pretrained(
