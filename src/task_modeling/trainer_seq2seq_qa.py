@@ -25,8 +25,10 @@ from adapters import AdapterTrainer
 from transformers import Seq2SeqTrainer, is_torch_tpu_available
 from transformers.trainer_utils import PredictionOutput, speed_metrics
 
+from language_modeling.PromptSeq2SeqTrainer import PromptSeq2SeqTrainer
 
-class QuestionAnsweringSeq2SeqTrainer(Seq2SeqTrainer):
+
+class QuestionAnsweringSeq2SeqTrainer(Seq2SeqTrainer, PromptSeq2SeqTrainer):
     def __init__(self, *args, eval_examples=None, post_process_function=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.eval_examples = eval_examples
