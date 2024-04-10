@@ -22,7 +22,7 @@ from transformers import (
 from language_modeling.args import PromptTuningArguments
 from transformers.trainer_utils import EvalLoopOutput, EvalPrediction
 from task_modeling.args import ModelArguments, DataTrainingArguments
-from task_modeling.utils import get_model
+from task_modeling.utils import get_model, get_updated_model
 
 
 logger = logging.getLogger(__name__)
@@ -381,9 +381,12 @@ def main():
         return EvalPrediction(predictions=formatted_predictions, label_ids=references)
 
     # Setup adapters
-    if adapter_args.train_adapter:
-        setup_adapter_training(model, adapter_args,
-                               data_args.dataset_name or "mlm")
+    # if adapter_args.train_adapter:
+    #     setup_adapter_training(model, adapter_args,
+    #                            data_args.dataset_name or "mlm")
+
+    model = get_updated_model(
+        model, model_args, adapter_args, prompt_args, data_args.dataset_name or "mlm")
 
     # Initialize our Trainer
     trainer_class = (
