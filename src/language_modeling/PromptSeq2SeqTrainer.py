@@ -3,7 +3,7 @@ import importlib.util
 import os
 import torch
 from torch import nn
-from transformers import Seq2SeqTrainer, PreTrainedModel
+from transformers import Trainer, PreTrainedModel
 from typing import Optional, Union, Tuple
 import logging
 
@@ -69,7 +69,7 @@ def unwrap_model(model: nn.Module) -> nn.Module:
         return model
 
 
-class PromptSeq2SeqTrainer(Seq2SeqTrainer):
+class PromptSeq2SeqTrainer(Trainer):
 
     def _save(self, output_dir: Optional[str] = None, state_dict=None):
         # If we are executing this function, we are the process zero, so we don't check for that.
