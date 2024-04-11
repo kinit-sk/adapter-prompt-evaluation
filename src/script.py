@@ -7,7 +7,6 @@ adapter_hyper_params = [
     '--dataset_config_name 20231101.en',
     '--per_device_train_batch_size 32',
     '--per_device_eval_batch_size 32',
-    '--optim adafactor',
     '--learning_rate 5e-5',
     '--weight_decay 0',
     '--do_train',
