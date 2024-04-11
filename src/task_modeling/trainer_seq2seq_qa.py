@@ -17,13 +17,24 @@ A subclass of `Trainer` specific to Question-Answering tasks
 """
 import math
 import time
-from typing import Dict, List, Optional
+import torch
+from torch import nn
+from typing import Callable, Dict, List, Optional, Tuple, Union
+from adapters.trainer import AdapterTrainerCallback
+from adapters.composition import AdapterCompositionBlock, Fuse
+
 
 from torch.utils.data import Dataset
 
 from adapters import AdapterTrainer
-from transformers import Seq2SeqTrainer, is_torch_tpu_available
+from transformers import Seq2SeqTrainer
 from transformers.trainer_utils import PredictionOutput, speed_metrics
+from transformers import PreTrainedModel, Seq2SeqTrainer
+from transformers.training_args import TrainingArguments
+from transformers.trainer_utils import EvalPrediction
+from transformers.data.data_collator import DataCollator
+from transformers.tokenization_utils_base import PreTrainedTokenizerBase
+from transformers.trainer_callback import TrainerCallback
 
 from language_modeling.PromptSeq2SeqTrainer import PromptSeq2SeqTrainer
 
@@ -167,3 +178,42 @@ class QuestionAnsweringSeq2SeqTrainer(Seq2SeqTrainer, PromptSeq2SeqTrainer):
 
 class QuestionAnsweringSeq2SeqAdapterTrainer(QuestionAnsweringSeq2SeqTrainer, AdapterTrainer):
     pass
+
+
+class QuestionAnsweringSeq2SeqAdapterTrainerWithPrompt(QuestionAnsweringSeq2SeqAdapterTrainer):
+    def __init__(
+        self,
+        *args,
+        adapter_names: Optional[List[List[str]]] = None,
+        **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+
+        if adapter_names is not None:
+            self.model.set_active_adapters(adapter_names)
+        # Set the defaults for loading/ saving model & adapters
+        if isinstance(self.model, PreTrainedModel):
+            model_frozen = getattr(self.model.base_model,
+                                   "model_frozen", False)
+        else:
+            model_frozen = False
+        if model_frozen and self.model.active_adapters:
+            # Check if training AdapterFusion
+            self.train_adapter_fusion = (
+                isinstance(self.model.active_adapters, Fuse)
+                or isinstance(self.model.active_adapters, AdapterCompositionBlock)
+                and any([isinstance(child, Fuse) for child in self.model.active_adapters.children])
+            )
+        else:
+            self.train_adapter_fusion = False
+        if self.model.active_adapters is None:
+            raise ValueError(
+                "Expected a model with an active adapter setup."
+                "If you want to fully finetune the model use the Trainer class."
+            )
+        if (self.label_names is None or len(self.label_names) < 1) and self.model.active_head is not None:
+            all_label_names = set()
+            for head in self.model._active_heads:
+                all_label_names |= set(
+                    self.model.heads[head].get_label_names())
+            self.label_names = list(all_label_names)

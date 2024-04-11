@@ -87,7 +87,6 @@ def get_updated_model(model, model_args, adapter_args, prompt_args, dataset_name
         model = PromptTuningForSeq2SeqLM.from_pretrained(
             model, model_args.load_language_prompt, adapter_name=f'{prompt_args.language}_prompt')
         model = freeze_parameters(model)
-
         model.train_adapter([dataset_name])
         model.set_active_adapters(dataset_name)
 

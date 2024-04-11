@@ -10,7 +10,7 @@ import adapters
 import evaluate
 import numpy as np
 from adapters import AdapterArguments, setup_adapter_training
-from task_modeling.trainer_seq2seq_qa import QuestionAnsweringSeq2SeqAdapterTrainer, QuestionAnsweringSeq2SeqTrainer
+from task_modeling.trainer_seq2seq_qa import QuestionAnsweringSeq2SeqAdapterTrainer, QuestionAnsweringSeq2SeqTrainer, QuestionAnsweringSeq2SeqAdapterTrainerWithPrompt
 from transformers import (
     AutoConfig,
     AutoTokenizer,
@@ -98,7 +98,8 @@ def main():
     model = get_model(model_args, config)
 
     # Convert the model into an adapter model
-    adapters.init(model)
+    if not model_args.full_finetuning:
+        adapters.init(model)
 
     # We resize the embeddings only when necessary to avoid index errors. If you are creating a model from scratch
     # on a small vocab and want a smaller embedding size, remove this test.
@@ -384,14 +385,18 @@ def main():
     # if adapter_args.train_adapter:
     #     setup_adapter_training(model, adapter_args,
     #                            data_args.dataset_name or "mlm")
-
-    model = get_updated_model(
-        model, model_args, adapter_args, prompt_args, data_args.dataset_name or "mlm")
+    if not model_args.full_finetuning:
+        model = get_updated_model(
+            model, model_args, adapter_args, prompt_args, data_args.dataset_name or "mlm")
 
     # Initialize our Trainer
-    trainer_class = (
-        QuestionAnsweringSeq2SeqAdapterTrainer if adapter_args.train_adapter else QuestionAnsweringSeq2SeqTrainer
-    )
+    if adapter_args.train_adapter and model_args.load_language_prompt is not None:
+        trainer_class = QuestionAnsweringSeq2SeqAdapterTrainerWithPrompt
+    else:
+        trainer_class = (
+            QuestionAnsweringSeq2SeqAdapterTrainer if adapter_args.train_adapter else QuestionAnsweringSeq2SeqTrainer
+        )
+
     trainer = trainer_class(
         model=model,
         args=training_args,

@@ -52,6 +52,12 @@ class ModelArguments:
         metadata={
             "help": "The path to the language prompt to use."},
     )
+    full_finetuning: bool = field(
+        default=False,
+        metadata={
+            "help": "Whether to do full finetuning or not."
+        },
+    )
     # load_task_prompt: Optional[str] = field(
     #     default=None,
     #     metadata={

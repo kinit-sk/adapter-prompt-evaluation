@@ -305,7 +305,6 @@ class PromptTuningForSeq2SeqLM(PeftModel):
 
         num_virtual_tokens = prompt_config.num_virtual_tokens
         if prompt_config.fusion == 'cat':
-            logging.info('Using Concatenation')
             num_virtual_tokens *= 2
 
         if decoder_attention_mask is not None:
@@ -359,7 +358,6 @@ class PromptTuningForSeq2SeqLM(PeftModel):
 
             num_virtual_tokens = prompt_config.num_virtual_tokens
             if prompt_config.fusion == 'cat':
-                logging.info('Using Concatenation')
                 num_virtual_tokens *= 2
 
             kwargs = deepcopy(kwargs)

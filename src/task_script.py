@@ -42,12 +42,14 @@ adapter_prompt_params = [
     '--load_lang_adapter ../results/language/wikipedia',  # Need to change
     '--prompt_tuning',
     '--task_type SEQ_2_SEQ_LM',
-    '--num_virtual_tokens 50'
+    '--num_virtual_tokens 50',
+    '--fusion none'
 ]
 
 prompt_adapter_params = [
     '--learning_rate 5e-5',
     '--train_adapter',
+    '--adapter_config seq_bn',
     '--output_dir ../results/task/english_prompt_squad_adapter',  # Need to change
     '--language_adapter_type prompt',
     '--task_adapter_type adapter',
@@ -73,6 +75,7 @@ prompt_prompt_params = [
 
 os.environ['WANDB_PROJECT'] = 'squad'
 os.environ['WANDB_WATCH'] = 'all'
+# os.environ['WANDB_MODE'] = 'disabled'
 
 
 if __name__ == '__main__':
