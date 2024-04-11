@@ -78,14 +78,15 @@ def get_updated_model(model, model_args, adapter_args, prompt_args, dataset_name
         return model
 
     elif language_adapter_type == 'prompt' and task_adapter_type == 'adapter':
-        model = PromptTuningForSeq2SeqLM.from_pretrained(
-            model, model_args.load_language_prompt, adapter_name=f'{prompt_args.language}_prompt')
-        model = freeze_parameters(model)
 
         adapter_config = AdapterConfig.load(adapter_args.adapter_config)
 
         if dataset_name not in model.adapters_config:
             model.add_adapter(dataset_name, config=adapter_config)
+
+        model = PromptTuningForSeq2SeqLM.from_pretrained(
+            model, model_args.load_language_prompt, adapter_name=f'{prompt_args.language}_prompt')
+        model = freeze_parameters(model)
 
         model.train_adapter([dataset_name])
         model.set_active_adapters(dataset_name)
