@@ -87,21 +87,6 @@ class DataTrainingArguments:
     dataset_config_name: Optional[str] = field(
         default=None, metadata={"help": "The configuration name of the dataset to use (via the datasets library)."}
     )
-    context_column: Optional[str] = field(
-        default="context",
-        metadata={
-            "help": "The name of the column in the datasets containing the contexts (for question answering)."},
-    )
-    question_column: Optional[str] = field(
-        default="question",
-        metadata={
-            "help": "The name of the column in the datasets containing the questions (for question answering)."},
-    )
-    answer_column: Optional[str] = field(
-        default="answers",
-        metadata={
-            "help": "The name of the column in the datasets containing the answers (for question answering)."},
-    )
     train_file: Optional[str] = field(
         default=None, metadata={"help": "The input training data file (a text file)."})
     validation_file: Optional[str] = field(
@@ -249,3 +234,8 @@ class DataTrainingArguments:
                     "csv", "json"], "`test_file` should be a csv or a json file."
         if self.val_max_answer_length is None:
             self.val_max_answer_length = self.max_answer_length
+
+
+# @dataclass
+# class DatasetArguments:
+#     dataset_name: str = field(

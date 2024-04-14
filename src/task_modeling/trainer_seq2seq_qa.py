@@ -17,11 +17,13 @@ A subclass of `Trainer` specific to Question-Answering tasks
 """
 import math
 import time
+import safetensors
 import torch
 from torch import nn
 from typing import Callable, Dict, List, Optional, Tuple, Union
 from adapters.trainer import AdapterTrainerCallback
 from adapters.composition import AdapterCompositionBlock, Fuse
+import os
 
 
 from torch.utils.data import Dataset
@@ -35,8 +37,13 @@ from transformers.trainer_utils import EvalPrediction
 from transformers.data.data_collator import DataCollator
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 from transformers.trainer_callback import TrainerCallback
+import logging
 
-from language_modeling.PromptSeq2SeqTrainer import PromptSeq2SeqTrainer
+from language_modeling.PromptSeq2SeqTrainer import SAFE_WEIGHTS_NAME, TRAINING_ARGS_NAME, WEIGHTS_NAME, PromptSeq2SeqTrainer, is_peft_available, unwrap_model
+from prompt_tuning.prompt_tuning import PeftModel
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 class QuestionAnsweringSeq2SeqTrainer(Seq2SeqTrainer, PromptSeq2SeqTrainer):
@@ -217,3 +224,44 @@ class QuestionAnsweringSeq2SeqAdapterTrainerWithPrompt(QuestionAnsweringSeq2SeqA
                 all_label_names |= set(
                     self.model.heads[head].get_label_names())
             self.label_names = list(all_label_names)
+
+    def _save(self, output_dir: Optional[str] = None, state_dict=None):
+        # If we are executing this function, we are the process zero, so we don't check for that.
+        output_dir = output_dir if output_dir is not None else self.args.output_dir
+        os.makedirs(output_dir, exist_ok=True)
+        logger.info(
+            f"Saving model checkpoint to {output_dir}")
+
+        supported_classes = (PreTrainedModel, PeftModel)
+        # Save a trained model and configuration using `save_pretrained()`.
+        # They can then be reloaded using `from_pretrained()`
+        if not isinstance(self.model, supported_classes):
+            if state_dict is None:
+                state_dict = self.model.state_dict()
+
+            if isinstance(unwrap_model(self.model), supported_classes):
+                unwrap_model(self.model).save_pretrained(
+                    output_dir, state_dict=state_dict, safe_serialization=self.args.save_safetensors
+                )
+            else:
+                logger.info(
+                    "Trainer.model is not a `PreTrainedModel`, only saving its state dict.")
+                if self.args.save_safetensors:
+                    safetensors.torch.save_file(
+                        state_dict, os.path.join(output_dir, SAFE_WEIGHTS_NAME))
+                else:
+                    torch.save(state_dict, os.path.join(
+                        output_dir, WEIGHTS_NAME))
+        else:
+            self.model.save_pretrained(
+                output_dir, state_dict=state_dict, safe_serialization=self.args.save_safetensors
+            )
+            self.model.base_model.save_all_adapters(output_dir)
+            if hasattr(self.model.base_model, "heads"):
+                self.model.base_model.save_all_heads(output_dir)
+
+        if self.tokenizer is not None:
+            self.tokenizer.save_pretrained(output_dir)
+
+        # Good practice: save your training arguments together with the trained model
+        torch.save(self.args, os.path.join(output_dir, TRAINING_ARGS_NAME))
