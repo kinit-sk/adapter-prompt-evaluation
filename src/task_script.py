@@ -3,10 +3,7 @@ import argparse
 
 default_params = [
     '--model_name_or_path bigscience/mt0-base',
-    '--dataset_name squad',
-    '--context_column context',
-    '--question_column question',
-    '--answer_column answers',
+    '--dataset_name sksquad'
     '--do_train',
     '--do_eval',
     '--predict_with_generate',
@@ -17,7 +14,29 @@ default_params = [
     '--overwrite_output_dir',
     '--pad_to_max_length',
     '--report_to wandb',
-    '--language english',
+    '--language slovak',
+]
+
+adapter_params = [
+    '--learning_rate 5e-5',
+    '--output_dir ../results/task/sksquad_adapter',
+    '--train_adapter',
+    '--adapter_config seq_bn',
+    '--language_adapter_type none',
+    '--task_adapter_type adapter',
+]
+
+prompt_params = [
+    '--learning_rate 5e-1',
+    '--weight_decay 0.00001',
+    '--output_dir ../results/task/sk_squad_prompt',
+    '--optim adafactor',
+    '--language_adapter_type none',
+    '--task_adapter_type prompt',
+    '--prompt_tuning',
+    '--task_type SEQ_2_SEQ_LM',
+    '--num_virtual_tokens 50',
+    '--fusion none'
 ]
 
 adapter_adapter_params = [
@@ -38,8 +57,8 @@ adapter_prompt_params = [
     '--language_adapter_type adapter',
     '--optim adafactor',
     '--task_adapter_type prompt',
-    '--lang_adapter_config ../results/language/wikipedia/adapter_config.json',  # Need to change
-    '--load_lang_adapter ../results/language/wikipedia',  # Need to change
+    '--lang_adapter_config ../results/language/english_adapter/wikipedia/adapter_config.json',  # Need to change
+    '--load_lang_adapter ../results/language/english_adapter/wikipedia',  # Need to change
     '--prompt_tuning',
     '--task_type SEQ_2_SEQ_LM',
     '--num_virtual_tokens 50',
