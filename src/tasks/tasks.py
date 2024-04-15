@@ -105,8 +105,8 @@ class SlovakSQuAD(Dataset):
     def load(self):
         self.dataset = load_dataset('TUKE-DeutscheTelekom/skquad')
 
-        # filter those with empty answer
-        self.dataset = self.dataset.filter(
+        # filter those with empty answer only for validation
+        self.dataset['validation'] = self.dataset['validation'].filter(
             lambda x: len(x['answers']['text']) > 0)
 
     def preprocess(self, examples):
