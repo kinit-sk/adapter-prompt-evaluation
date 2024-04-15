@@ -105,18 +105,24 @@ if __name__ == '__main__':
                         help='Type of script to run')
     args = parser.parse_args()
 
-    if args.language_type == 'adapter' and args.task_type == 'adapter':
+    if args.language_type == 'none' and args.task_type == 'adapter':
+        hyper_params = default_params + adapter_params
+        os.environ['WANDB_NAME'] = 'mt0-sksquad_adapter'
+    elif args.language_type == 'none' and args.task_type == 'prompt':
+        hyper_params = default_params + prompt_params
+        os.environ['WANDB_NAME'] = 'mt0-sksquad_prompt'
+    elif args.language_type == 'adapter' and args.task_type == 'adapter':
         hyper_params = default_params + adapter_adapter_params
-        os.environ['WANDB_NAME'] = 'mt0-english-adapter_squad_adatper'
+        os.environ['WANDB_NAME'] = 'mt0-slovak-adapter_squad_adatper'
     elif args.language_type == 'adapter' and args.task_type == 'prompt':
         hyper_params = default_params + adapter_prompt_params
-        os.environ['WANDB_NAME'] = 'mt0-english-adapter_squad_prompt'
+        os.environ['WANDB_NAME'] = 'mt0-slovak-adapter_squad_prompt'
     elif args.language_type == 'prompt' and args.task_type == 'adapter':
         hyper_params = default_params + prompt_adapter_params
-        os.environ['WANDB_NAME'] = 'mt0-english-prompt_squad_adapter'
+        os.environ['WANDB_NAME'] = 'mt0-slovak-prompt_squad_adapter'
     elif args.language_type == 'prompt' and args.task_type == 'prompt':
         hyper_params = default_params + prompt_prompt_params
-        os.environ['WANDB_NAME'] = 'mt0-english-prompt_squad_prompt'
+        os.environ['WANDB_NAME'] = 'mt0-slovak-prompt_squad_prompt'
 
     os.system(
         f'python -m task_modeling.run {" ".join(hyper_params)}'
