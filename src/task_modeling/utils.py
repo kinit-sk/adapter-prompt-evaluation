@@ -86,17 +86,27 @@ def get_updated_model(model, model_args, adapter_args, prompt_args, dataset_name
 
         adapter_config = AdapterConfig.load(adapter_args.adapter_config)
 
-        if dataset_name not in model.adapters_config:
-            model.add_adapter(dataset_name, config=adapter_config)
+        if adapter_args.load_adapter:
+            adapter_name = model.load_adapter(
+                adapter_args.load_adapter,
+                config=adapter_config,
+            )
+            model.set_active_adapters(adapter_name)
+            model = PromptTuningForSeq2SeqLM.from_pretrained(
+                model, model_args.load_language_prompt, adapter_name=f'{prompt_args.language}_prompt')
+        else:
 
-        model = PromptTuningForSeq2SeqLM.from_pretrained(
-            model, model_args.load_language_prompt, adapter_name=f'{prompt_args.language}_prompt')
-        model = freeze_parameters(model)
-        model.train_adapter([dataset_name])
-        model.set_active_adapters(dataset_name)
+            if dataset_name not in model.adapters_config:
+                model.add_adapter(dataset_name, config=adapter_config)
 
-        print(model.active_adapters)
-        print(model)
+            model = PromptTuningForSeq2SeqLM.from_pretrained(
+                model, model_args.load_language_prompt, adapter_name=f'{prompt_args.language}_prompt')
+            model = freeze_parameters(model)
+            model.train_adapter([dataset_name])
+            model.set_active_adapters(dataset_name)
+
+            print(model.active_adapters)
+            print(model)
         return model
     elif language_adapter_type == 'prompt' and task_adapter_type == 'prompt' and prompt_args.prompt_tuning:
         peft_task_config = PromptTuningConfig(
