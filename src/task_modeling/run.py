@@ -5,7 +5,7 @@ import sys
 import adapters
 from functools import partial
 from adapters import AdapterArguments
-from task_modeling.trainer_seq2seq_qa import QuestionAnsweringSeq2SeqAdapterTrainer, QuestionAnsweringSeq2SeqTrainer, QuestionAnsweringSeq2SeqAdapterTrainerWithPrompt
+from task_modeling.trainer_seq2seq_qa import QuestionAnsweringSeq2SeqAdapterTrainer, QuestionAnsweringSeq2SeqTrainer, QuestionAnsweringSeq2SeqAdapterTrainerWithPrompt, QuestionAnsweringSeq2SeqTrainerWithPrompt
 from transformers import (
     AutoConfig,
     AutoTokenizer,
@@ -218,12 +218,15 @@ def main():
     # Initialize our Trainer
     if adapter_args.train_adapter and model_args.load_language_prompt is not None:
         trainer_class = QuestionAnsweringSeq2SeqAdapterTrainerWithPrompt
+    elif prompt_args.prompt_tuning:
+        trainer_class = QuestionAnsweringSeq2SeqTrainerWithPrompt
     else:
         trainer_class = (
             QuestionAnsweringSeq2SeqAdapterTrainer if adapter_args.train_adapter else QuestionAnsweringSeq2SeqTrainer
         )
 
     print(model)
+    print(trainer_class)
 
     trainer = trainer_class(
         model=model,

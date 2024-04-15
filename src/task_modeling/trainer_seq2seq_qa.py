@@ -46,7 +46,8 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-class QuestionAnsweringSeq2SeqTrainer(Seq2SeqTrainer, PromptSeq2SeqTrainer):
+# , PromptSeq2SeqTrainer):
+class QuestionAnsweringSeq2SeqTrainer(Seq2SeqTrainer):
     def __init__(self, *args, eval_examples=None, post_process_function=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.eval_examples = eval_examples
@@ -187,7 +188,11 @@ class QuestionAnsweringSeq2SeqAdapterTrainer(QuestionAnsweringSeq2SeqTrainer, Ad
     pass
 
 
-class QuestionAnsweringSeq2SeqAdapterTrainerWithPrompt(QuestionAnsweringSeq2SeqAdapterTrainer):
+class QuestionAnsweringSeq2SeqTrainerWithPrompt(QuestionAnsweringSeq2SeqTrainer, PromptSeq2SeqTrainer):
+    pass
+
+
+class QuestionAnsweringSeq2SeqAdapterTrainerWithPrompt(QuestionAnsweringSeq2SeqAdapterTrainer, PromptSeq2SeqTrainer):
     def __init__(
         self,
         *args,
