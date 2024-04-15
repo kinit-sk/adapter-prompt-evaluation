@@ -65,13 +65,15 @@ def main():
             "train": load_dataset(
                 dataset_name,
                 data_args.dataset_config_name,
-                split=f"train[:1000000]",
+                # split=f"train[:1000000]",
+                split=f"train[:{data_args.validation_split_percentage}%]",
                 use_auth_token=True if model_args.use_auth_token else None,
             ),
             "validation": load_dataset(
                 dataset_name,
                 data_args.dataset_config_name,
-                split="train[1000000:1100000]",
+                # split="train[1000000:1100000]",
+                split=f"train[{data_args.validation_split_percentage}%:]",
                 use_auth_token=True if model_args.use_auth_token else None,
             )
         })

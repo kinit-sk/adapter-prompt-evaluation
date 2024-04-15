@@ -1,6 +1,6 @@
 import tasks
 from tasks.dataset import Dataset
-from tasks.tasks import MLQA, SlovakSQuAD
+from tasks.tasks import MLQA, SlovakSQuAD, CSSQuAD
 
 
 def dataset_factory(
@@ -9,6 +9,7 @@ def dataset_factory(
     dataset = {
         "mlqa": MLQA,
         "squad": MLQA,
-        "sksquad": SlovakSQuAD
+        "sksquad": SlovakSQuAD,
+        "cssquad": CSSQuAD,
     }[dataset_name]
     return dataset()

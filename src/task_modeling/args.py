@@ -58,11 +58,11 @@ class ModelArguments:
             "help": "Whether to do full finetuning or not."
         },
     )
-    # load_task_prompt: Optional[str] = field(
-    #     default=None,
-    #     metadata={
-    #         "help": "The path to the task prompt to use."},
-    # )
+    load_task_prompt: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "The path to the task prompt to use."},
+    )
     # language_prompt_config: Optional[str] = field(
     #     default=None,
     #     metadata={
