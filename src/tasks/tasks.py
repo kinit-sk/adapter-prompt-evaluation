@@ -27,7 +27,7 @@ class MLQA(Dataset):
         super().__init__(benchmark_name, subset, split, path)
 
     def load(self) -> None:
-        if self.language == 'english':
+        if self.language == 'en':
             self.dataset = load_dataset('squad')
         else:
             train_dataset = load_dataset(

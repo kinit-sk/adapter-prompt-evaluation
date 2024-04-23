@@ -4,7 +4,7 @@ from tasks.tasks import MLQA, SlovakSQuAD, CSSQuAD
 
 
 def dataset_factory(
-    dataset_name: str,
+    dataset_name: str, **kwargs
 ) -> Dataset:
     dataset = {
         "mlqa": MLQA,
@@ -12,4 +12,4 @@ def dataset_factory(
         "sksquad": SlovakSQuAD,
         "cssquad": CSSQuAD,
     }[dataset_name]
-    return dataset()
+    return dataset(**kwargs)

@@ -1,3 +1,4 @@
+import os
 from prompt_tuning.config import PromptTuningInit
 
 
@@ -41,3 +42,30 @@ def get_promptinit(init_type):
         return PromptTuningInit.RANDOM
     elif init_type == 'class':
         return PromptTuningInit.CLASS
+
+
+def download_model(model_name, type='adapter'):
+    if os.path.exists(f'../cache/models/{model_name}'):
+        return f'../cache/models/{model_name}'
+
+    os.mkdir(f'../cache/models/{model_name}', exist_ok=True)
+    if type == 'adapter':
+        files = [
+            'adapter_config.json',
+            'head_config.json',
+            'pytorch_adapter.bin',
+            'pytorch_model_head.bin',
+        ]
+    elif type == 'prompt':
+        files = [
+            'adapter_config.json',
+            'adapter_model.bin',
+        ]
+
+    for file in files:
+        output_path = f'../cache/models/{model_name}/{file}'
+        os.system(
+            f'curl -Ls -o {output_path} https://huggingface.co/{model_name}/resolve/main/{file}?download=true'
+        )
+
+    return f'../cache/models/{model_name}'

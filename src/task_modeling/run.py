@@ -47,7 +47,7 @@ def main():
     set_seed(training_args.seed)
 
     dataset = dataset_factory(
-        dataset_name=data_args.dataset_name)
+        dataset_name=data_args.dataset_name, language=prompt_args.language)
 
     config = AutoConfig.from_pretrained(
         model_args.config_name if model_args.config_name else model_args.model_name_or_path,
