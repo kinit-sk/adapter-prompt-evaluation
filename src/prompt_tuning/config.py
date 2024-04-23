@@ -39,7 +39,7 @@ class PromptTuningConfig(PushToHubMixin):
     tokenizer_name_or_path: str = 't5-base'
     peft_type: str = 'PROMPT_TUNING'
     task_prompt: bool = False
-    fusion: str = 'cat' # 'cat', 'avg'
+    fusion: str = 'none' # 'cat', 'avg', 'none'
 
     def to_dict(self):
         return asdict(self)

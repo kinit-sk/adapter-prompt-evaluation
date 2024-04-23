@@ -160,3 +160,6 @@ cython_debug/
 #.idea/
 
 configs/*.conf
+results/*
+src/wandb/*
+data/**
