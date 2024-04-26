@@ -59,42 +59,23 @@ def main():
     # TODO: Create custom Dataloader that will handle local datasets and also datasets from HF
     if data_args.dataset_name is not None:
         dataset_name = 'wikimedia/wikipedia'
-        # dataset_name = 'wikitext'
-        # Downloading and loading a dataset from the hub.
+        train_split = f"train[:{data_args.validation_split_percentage}%]" if prompt_args.language != "english" else f"train[:1000000]"
+        valid_split = f"train[{data_args.validation_split_percentage}%:]" if prompt_args.language != "english" else f"train[1000000:1100000]"
+        
         raw_datasets = DatasetDict({
             "train": load_dataset(
                 dataset_name,
                 data_args.dataset_config_name,
-                # split=f"train[:1000000]",
-                split=f"train[:{data_args.validation_split_percentage}%]",
+                split=train_split,
                 use_auth_token=True if model_args.use_auth_token else None,
             ),
             "validation": load_dataset(
                 dataset_name,
                 data_args.dataset_config_name,
-                # split="train[1000000:1100000]",
-                split=f"train[{data_args.validation_split_percentage}%:]",
+                split=valid_split,
                 use_auth_token=True if model_args.use_auth_token else None,
             )
         })
-        # raw_datasets['train'] = load_dataset(
-        #     dataset_name,
-        #     data_args.dataset_config_name,
-        #     use_auth_token=True if model_args.use_auth_token else None,
-        # )
-        # if "validation" not in raw_datasets.keys():
-        #     raw_datasets["validation"] = load_dataset(
-        #         dataset_name,
-        #         data_args.dataset_config_name,
-        #         split=f"train[:{data_args.validation_split_percentage}%]",
-        #         use_auth_token=True if model_args.use_auth_token else None,
-        #     )
-        #     raw_datasets["train"] = load_dataset(
-        #         dataset_name,
-        #         data_args.dataset_config_name,
-        #         split=f"train[{data_args.validation_split_percentage}%:]",
-        #         use_auth_token=True if model_args.use_auth_token else None,
-        #     )
     else:
         data_files = {}
         if data_args.train_file is not None:
