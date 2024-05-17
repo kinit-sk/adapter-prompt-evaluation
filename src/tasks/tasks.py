@@ -1,4 +1,6 @@
-from typing import Any
+from typing import Any, Dict
+from collections import namedtuple
+from metrics.metrics import span_f1
 from tasks.dataset import Dataset
 from tasks.utils import convert_language
 from datasets import load_dataset, DatasetDict
@@ -8,10 +10,13 @@ from transformers.trainer_utils import EvalLoopOutput, EvalPrediction
 import numpy as np
 import pandas as pd
 import json
+import evaluate
 
 import logging
 
 logging.basicConfig(level=logging.INFO)
+
+Metric = namedtuple('Metric', ['name', 'compute'])
 
 
 class MLQA(Dataset):
@@ -25,22 +30,45 @@ class MLQA(Dataset):
     ) -> None:
         self.language = convert_language(language)
         super().__init__(benchmark_name, subset, split, path)
+        self.splits = {
+            'train': 'train',
+            'validation': 'validation',
+            'test': 'test',
+        }
 
     def load(self) -> None:
         if self.language == 'en':
-            self.dataset = load_dataset('squad')
+            train_dataset = load_dataset(
+                'squad', split='train')
+            # split train_dataset into train and validation
+            train_dataset = train_dataset.train_test_split(
+                test_size=0.15, seed=42)
+            
+            valid_dataset = train_dataset['test']
+            train_dataset = train_dataset['train']
+            
+            test_dataset = load_dataset(
+                'squad', split='validation')
+            
+            self.dataset = DatasetDict(
+                {'train': train_dataset, 'validation': valid_dataset, 'test': test_dataset})
         else:
             train_dataset = load_dataset(
                 'mlqa', name=f'mlqa-translate-train.{self.language}', split='train')
-
-            valid_dataset = load_dataset(
-                'mlqa', name=f'mlqa-translate-train.{self.language}', split='validation')
+            
+            # split train_dataset into train and validation
+            train_dataset = train_dataset.train_test_split(
+                test_size=0.15, seed=42)
+            valid_dataset = train_dataset['test']
+            train_dataset = train_dataset['train']
 
             test_dataset = load_dataset(
-                'mlqa', name=f'mlqa-translate-test.{self.language}', split='test')
+                'mlqa', name=f'mlqa-translate-train.{self.language}', split='validation')
 
             self.dataset = DatasetDict(
                 {'train': train_dataset, 'validation': valid_dataset, 'test': test_dataset})
+        
+        print(self.dataset)
 
     def _convert2squad(self, data):
         rows = []
@@ -109,6 +137,8 @@ class MLQA(Dataset):
                       for ex in examples]
         return EvalPrediction(predictions=formatted_predictions, label_ids=references)
 
+    def get_metric(self):
+        return evaluate.load('squad')
 
 class SlovakSQuAD(MLQA):
     def __init__(
@@ -124,7 +154,7 @@ class SlovakSQuAD(MLQA):
         self.splits = {
             'train': 'train',
             'validation': 'validation',
-            'test': 'validation',
+            'test': 'test',
         }
 
     def load(self):
@@ -132,22 +162,26 @@ class SlovakSQuAD(MLQA):
             train_data = json.load(f)
 
         with open('../data/SKSQuAD/sk-quad-220614-dev.json', 'r') as f:
-            valid_data = json.load(f)
+            test_data = json.load(f)
 
         train_data = self._convert2squad(train_data)
-        valid_data = self._convert2squad(valid_data)
+        test_data = self._convert2squad(test_data)
 
-        train = HFDataset.from_pandas(train_data)
-        valid = HFDataset.from_pandas(valid_data)
+        train = HFDataset.from_pandas(train_data).train_test_split(test_size=0.15, seed=42)
+        valid = train['test']
+        train = train['train']
+        
+        test = HFDataset.from_pandas(test_data)
 
         valid = valid.filter(lambda x: len(x['answers']['text']) > 0)
+        test = test.filter(lambda x: len(x['answers']['text']) > 0)
 
         self.dataset = DatasetDict({
             'train': train,
             'validation': valid,
-            'test': valid
-
+            'test': test
         })
+        print(self.dataset)
 
 
 class CSSQuAD(MLQA):
@@ -164,7 +198,7 @@ class CSSQuAD(MLQA):
         self.splits = {
             'train': 'train',
             'validation': 'validation',
-            'test': 'validation',
+            'test': 'test',
         }
 
     def load(self):
@@ -172,19 +206,161 @@ class CSSQuAD(MLQA):
             train_data = json.load(f)
 
         with open('../data/CSSQuAD/squad-2.0-cs/dev-v2.0.json', 'r') as f:
-            valid_data = json.load(f)
+            test_data = json.load(f)
 
         train_data = self._convert2squad(train_data)
-        valid_data = self._convert2squad(valid_data)
+        test_data = self._convert2squad(test_data)
 
-        train = HFDataset.from_pandas(train_data)
-        valid = HFDataset.from_pandas(valid_data)
+        train = HFDataset.from_pandas(train_data).train_test_split(test_size=0.15, seed=42)
+        valid = train['test']
+        train = train['train']
+        
+        test = HFDataset.from_pandas(test_data)
 
+        test = test.filter(lambda x: len(x['answers']['text']) > 0)
         valid = valid.filter(lambda x: len(x['answers']['text']) > 0)
 
         self.dataset = DatasetDict({
             'train': train,
             'validation': valid,
-            'test': valid
-
+            'test': test
         })
+        print(self.dataset)
+
+
+class WikiANN(Dataset):
+    def __init__(
+        self, 
+        benchmark_name: str = 'wikiann',
+        subset: str = None,
+        split: str = None,
+        path: str = None,
+        language: str = 'english'
+    ):
+        self.language = convert_language(language)
+        super().__init__(benchmark_name, subset, split, path)
+        self.split_to_data_split = {
+            'train': 'train',
+            'validation': 'validation',
+            'test': 'test',
+        }
+        
+
+    def load(self):
+        self.dataset = load_dataset('wikiann', name=f'{self.language}')
+
+    def preprocess(self, examples):
+        tokens = examples['tokens']
+        spans = examples['spans']
+        
+        def generate_input(_tokens):
+            # return f'Sentence: {" ".join(_tokens)}\nIdentify all named entities in the sentence using PER, LOC, ORG.'
+            return f'tag: {" ".join(_tokens)}'
+
+        inputs = [generate_input(token) for token in tokens]
+        # targets = [', '.join(span) for span in spans]
+        targets = ['$$'.join(span) for span in spans]
+
+        return inputs, targets
+    
+    def preprocess_validation_function(
+            self,
+            examples: Dict,
+            tokenizer: Any,
+            data_args: Any,
+            max_seq_length: int = 128
+
+    ):
+        return self.tokenize(examples, tokenizer, data_args, max_seq_length)
+        
+    def post_processing_function(
+        self, examples: datasets.Dataset, features: datasets.Dataset, outputs: EvalLoopOutput, stage="eval", tokenizer: Any = None
+    ):
+        # Decode the predicted tokens.
+        preds = outputs.predictions
+        if isinstance(preds, tuple):
+            preds = preds[0]
+        preds = np.where(preds != -100, preds, tokenizer.pad_token_id)
+        decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
+        
+        labels = outputs.label_ids
+                
+        labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
+        decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+
+        return EvalPrediction(predictions=decoded_preds, label_ids=decoded_labels)
+    
+    def get_metric(self):
+        return Metric(name='span_f1', compute=span_f1)
+    
+    
+class XNLI(Dataset):
+    def __init__(
+        self,
+        benchmark_name: str = 'xnli',
+        subset: str = None,
+        split: str = None,
+        path: str = None,
+        language: str = 'english'
+    ):
+        self.language = convert_language(language)
+        super().__init__(benchmark_name, subset, split, path)
+        self.label_names = ['Yes', 'Maybe', 'No']
+        self.split_to_data_split = {
+            'train': 'train',
+            'validation': 'validation',
+            'test': 'test',
+        }
+
+    def load(self):
+        self.dataset = load_dataset('xnli', name=f'{self.language}')
+
+    def preprocess(self, examples):
+        premises = examples['premise']
+        hypotheses = examples['hypothesis']
+        labels = examples['label']
+        
+        def generate_input(_premise, _hypothesis):
+            return f'{_premise} \n\nQuestion: Does this imply that \"{_hypothesis}\"? Yes, no, or maybe?'
+
+        inputs = [generate_input(premise, hypothesis) for premise, hypothesis in zip(premises, hypotheses)]
+        targets = [self.label_names[label] for label in labels]
+
+        return inputs, targets
+    
+    def preprocess_validation_function(
+            self,
+            examples: Dict,
+            tokenizer: Any,
+            data_args: Any,
+            max_seq_length: int = 128
+
+    ):
+        return self.tokenize(examples, tokenizer, data_args, max_seq_length)
+    
+    def convert_label(self, texts):
+        return [self.label_names.index(text) for text in texts]
+    
+    def post_processing_function(
+        self, examples: datasets.Dataset, features: datasets.Dataset, outputs: EvalLoopOutput, stage="eval", tokenizer: Any = None
+    ):
+        # Decode the predicted tokens.
+        preds = outputs.predictions
+        if isinstance(preds, tuple):
+            preds = preds[0]
+        preds = np.where(preds != -100, preds, tokenizer.pad_token_id)
+        decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
+        
+        predictions = self.convert_label(decoded_preds)
+        
+        labels = outputs.label_ids
+                
+        labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
+        decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+        
+        references = self.convert_label(decoded_labels)
+
+        return EvalPrediction(predictions=predictions, label_ids=references)
+    
+    def get_metric(self):
+        return evaluate.load('xnli')

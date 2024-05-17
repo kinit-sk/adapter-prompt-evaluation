@@ -163,3 +163,4 @@ configs/*.conf
 results/*
 src/wandb/*
 data/**
+cache/**

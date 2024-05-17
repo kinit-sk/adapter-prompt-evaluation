@@ -1,6 +1,5 @@
-import evaluate
 from datasets import load_dataset
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 
 class Dataset:
@@ -118,5 +117,5 @@ class Dataset:
     def get_dataset(self, split: str):
         return self.dataset[self.splits[split]]
 
-    def get_metric(self, metric_name: str):
-        return evaluate.load(metric_name)
+    def get_metric(self):
+        raise NotImplementedError
