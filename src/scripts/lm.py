@@ -13,7 +13,7 @@ default_params = [
     '--overwrite_output_dir',
     '--max_seq_length 256',
     '--pad_to_max_length',
-    '--max_steps 50000',
+    '--max_steps 100000',
     '--report_to wandb',
     '--max_eval_samples 500000',
 ]
@@ -31,8 +31,9 @@ prompt_hyper_params = [
     '--weight_decay 0.00001',
     '--prompt_tuning',
     '--task_type SEQ_2_SEQ_LM',
-    '--num_virtual_tokens 100',
+    '--num_virtual_tokens 50',
     '--prompt_tuning_init text',
+    '--fusion cat',
 ]
 
 
@@ -41,9 +42,8 @@ os.environ['WANDB_WATCH'] = 'all'
 
 
 if __name__ == '__main__':
-    # ['english', 'slovak', 'czech', 'german', 'spanish']
-    languages = ['arabic']
-    lang_codes = ['ar']  # ['en', 'sk', 'cs', 'de', 'es']
+    languages = ['english', 'slovak', 'czech', 'german', 'spanish', 'arabic']
+    lang_codes = ['en', 'sk', 'cs', 'de', 'es', 'ar']
 
     config = ConfigParser.ConfigParser()
     config.read('../configs/api.conf')
@@ -54,23 +54,23 @@ if __name__ == '__main__':
             f'--dataset_config_name 20231101.{code}',
             f'--language {language}'
         ]
-        os.environ['WANDB_NAME'] = f'mt0-{language}-adapter'
+        os.environ['WANDB_NAME'] = f'mt0-{language}-adapter-100k'
         params = default_params + adapter_hyper_params + lang_params + \
-            [f'--output_dir ../results/language/{language}_adapter',]
+            [f'--output_dir ../results/language/{language}_adapter_100k',]
         os.system(
             f'python -m language_modeling.run {" ".join(params)}'
         )
-        publish_to_hf(f'{language}_adapter',
-                      f'../results/language/{language}_adapter/wikipedia')
+        publish_to_hf(f'{language}_adapter_100k',
+                      f'../results/language/{language}_adapter_100k/wikipedia')
 
-        os.environ['WANDB_NAME'] = f'mt0-{language}-prompt-100'
+        os.environ['WANDB_NAME'] = f'mt0-{language}-prompt-100k'
         params = default_params + prompt_hyper_params + lang_params + \
             [
-                f'--output_dir ../results/language/{language}_prompt_100',
-                f'--prompt_tuning_init_text "Generate the output in the {language.capitalize()} language:"',
+                f'--output_dir ../results/language/{language}_prompt_100k',
+                f'--prompt_tuning_init_text "Generate the output in {language.capitalize()}:"',
             ]
         os.system(
             f'python -m language_modeling.run {" ".join(params)}'
         )
-        publish_to_hf(f'{language}_prompt_100',
-                      f'../results/language/{language}_prompt_100/{language}_prompt')
+        publish_to_hf(f'{language}_prompt_100k',
+                      f'../results/language/{language}_prompt_100k/{language}_prompt')
