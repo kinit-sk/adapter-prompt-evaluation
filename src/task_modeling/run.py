@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+import torch
 
 import adapters
 from functools import partial
@@ -62,6 +63,9 @@ def main():
     )
 
     model = get_model(model_args, config)
+    device = torch.device(
+        "cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
 
     # Convert the model into an adapter model
     if not model_args.full_finetuning:
@@ -120,7 +124,7 @@ def main():
     if training_args.do_train:
         train_dataset = dataset.get_dataset("train")
         if data_args.max_train_samples is not None:
-            # We will select sample from whole data if agument is specified
+            # We will select sample from whole data if argument is specified
             max_train_samples = min(
                 len(train_dataset), data_args.max_train_samples)
             train_dataset = train_dataset.select(range(max_train_samples))
@@ -196,8 +200,7 @@ def main():
         pad_to_multiple_of=8 if training_args.fp16 else None,
     )
 
-    metric = dataset.get_metric(
-        "squad_v2" if data_args.version_2_with_negative else "squad")
+    metric = dataset.get_metric()
 
     def compute_metrics(p: EvalPrediction):
         return metric.compute(predictions=p.predictions, references=p.label_ids)
@@ -225,7 +228,6 @@ def main():
             QuestionAnsweringSeq2SeqAdapterTrainer if adapter_args.train_adapter else QuestionAnsweringSeq2SeqTrainer
         )
 
-    print(model)
     print(trainer_class)
 
     trainer = trainer_class(
