@@ -12,6 +12,7 @@ import logging
 
 from prompt_tuning.config import PromptTuningConfig
 from prompt_tuning.model import PromptEmbedding
+from prompt_tuning.partial_model import PartialPromptEmbedding
 from prompt_tuning.utils import _prepare_prompt_learning_config, _get_batch_size, get_peft_model_state_dict, infer_device, load_adapter_weights, set_peft_model_state_dict, _set_trainable
 
 logging.basicConfig(level=logging.INFO)
@@ -84,6 +85,10 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         model.load_adapter(model_id, adapter_name=adapter_name,
                            is_trainable=is_trainable, **kwargs)
         return model
+    
+    def set_fixed(self, fixed_text, adapter_name='default'):
+        self.prompt_encoder[adapter_name].set_fixed(fixed_text)
+        
 
     def _setup_prompt_encoder(self, adapter_name):
         config = self._peft_config[adapter_name]
@@ -118,8 +123,11 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
                 self.word_embeddings = transformer_backbone.get_submodule(
                     named_param.replace(".weight", ""))
                 break
-
-        prompt_encoder = PromptEmbedding(config, self.word_embeddings)
+        
+        if 'partial_embedding' in config.__dict__ and config.partial_embedding:
+            prompt_encoder = PartialPromptEmbedding(config, self.word_embeddings)
+        else:
+            prompt_encoder = PromptEmbedding(config, self.word_embeddings)
         prompt_encoder.to(self.device)
 
         self.prompt_encoder.update(
@@ -160,6 +168,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             prompt_embeddings = []
             for adapter_name in self.prompt_encoder.keys():
                 prompt_encoder = self.prompt_encoder[adapter_name]
+                # prompt_config = self._peft_config[adapter_name]
                 prompt_tokens = (
                     self.prompt_tokens[adapter_name]
                     .unsqueeze(0)
@@ -176,7 +185,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             if prompt_config.fusion == 'avg':
                 prompt_embeddings = torch.stack(prompt_embeddings, dim=1)
                 return torch.mean(prompt_embeddings, dim=1)
-            elif prompt_config.fusion == 'cat':
+            elif prompt_config.fusion == 'cat' or prompt_config.fusion == 'none':
                 return torch.cat(prompt_embeddings, dim=1)
             else:
                 raise ValueError(

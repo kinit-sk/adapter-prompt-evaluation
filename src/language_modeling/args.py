@@ -205,3 +205,12 @@ class PromptTuningArguments:
     language: Optional[str] = field(
         default="english", metadata={"help": "The language to use."}
     )
+    partial_prompt_tuning_init_text: Optional[str] = field(
+        default=None, metadata={"help": "The initial prompt text to use for prompt tuning."}
+    )
+    partial_embedding: Optional[bool] = field(
+        default=False, metadata={"help": "Whether to use partial embedding for prompt tuning."}
+    )
+    fixed_size: Optional[int] = field(
+        default=0, metadata={"help": "The fixed size to use for prompt tuning."}
+    )

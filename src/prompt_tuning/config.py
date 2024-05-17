@@ -35,6 +35,9 @@ class PromptTuningConfig(PushToHubMixin):
     num_layers: int = None
     prompt_tuning_init: str = PromptTuningInit.RANDOM
     prompt_tuning_init_text: str = None
+    partial_prompt_tuning_init_text: str = None
+    partial_embedding: bool = False
+    fixed_size: int = 0
     num_attention_heads: int = None
     tokenizer_name_or_path: str = 't5-base'
     peft_type: str = 'PROMPT_TUNING'
