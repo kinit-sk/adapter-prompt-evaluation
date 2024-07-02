@@ -1,6 +1,6 @@
 import tasks
 from tasks.dataset import Dataset
-from tasks.tasks import MLQA, SlovakSQuAD, CSSQuAD, WikiANN
+from tasks.tasks import MLQA, SlovakSQuAD, CSSQuAD, TeQuAD, WikiANN, MultiClaimCheckWorthy, XNLI
 
 
 def dataset_factory(
@@ -11,6 +11,9 @@ def dataset_factory(
         "squad": MLQA,
         "sksquad": SlovakSQuAD,
         "cssquad": CSSQuAD,
-        'wikiann': WikiANN
+        "tequad": TeQuAD,
+        'wikiann': WikiANN,
+        'xnli': XNLI,
+        'multiclaim_checkworthy': MultiClaimCheckWorthy
     }[dataset_name]
     return dataset(**kwargs)

@@ -48,7 +48,7 @@ def download_model(model_name, type='adapter'):
     if os.path.exists(f'../cache/models/{model_name}'):
         return f'../cache/models/{model_name}'
 
-    os.mkdir(f'../cache/models/{model_name}', exist_ok=True)
+    os.makedirs(f'../cache/models/{model_name}', exist_ok=True)
     if type == 'adapter':
         files = [
             'adapter_config.json',

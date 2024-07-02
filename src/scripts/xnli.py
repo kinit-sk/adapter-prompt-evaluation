@@ -9,6 +9,7 @@ default_params = [
     '--evaluation_strategy steps',
     '--eval_steps 1000',
     '--save_steps 1000',
+    '--max_answer_length 3',
     '--load_best_model_at_end',
     '--predict_with_generate',
     '--per_device_train_batch_size 32',
@@ -92,6 +93,7 @@ inference_params = [
     '--predict_with_generate',
     '--per_device_eval_batch_size 32',
     '--max_seq_length 256',
+    '--max_answer_length 3',
     '--overwrite_output_dir',
     '--pad_to_max_length',
     '--language_adapter_type none',
@@ -101,9 +103,9 @@ inference_params = [
 
 
 if __name__ == '__main__':
-    languages = ['english', 'slovak', 'czech', 'german', 'spanish', 'telugu']
-    lang_code = ['en', 'sk', 'cs', 'de', 'es', 'te']
-    datasets = ['wikiann'] * 6
+    languages = ['english', 'german', 'spanish', 'slovak', 'czech', 'telugu']
+    lang_code = ['en', 'de', 'es', 'sk', 'cs', 'te']
+    datasets = ['xnli'] * 6
 
     os.environ['WANDB_WATCH'] = 'all'
 
@@ -121,7 +123,7 @@ if __name__ == '__main__':
         # train only task adapter
         os.environ['WANDB_NAME'] = f'mt0-{dataset}-{code}-adapter-100k'
         params = default_params + adapter_params + lang_params + \
-            [f'--output_dir ../results/ner/{dataset}_{code}_adapter_100k']
+            [f'--output_dir ../results/xnli/{dataset}_{code}_adapter_100k']
         os.system(
             f'python -m task_modeling.run {" ".join(params)}'
         )
@@ -129,8 +131,8 @@ if __name__ == '__main__':
         # train only task prompt
         os.environ['WANDB_NAME'] = f'mt0-{dataset}-{code}-prompt-100k'
         params = default_params + prompt_params + lang_params + [
-            f'--output_dir ../results/ner/{dataset}_{code}_prompt_100k',
-            f'--prompt_tuning_init_text "Identify ner tags (ORG, PER, LOC) in the text in {language.capitalize()}:"',]
+            f'--output_dir ../results/xnli/{dataset}_{code}_prompt_100k',
+            f'--prompt_tuning_init_text "Select \"Yes\", \"No\" or \"Maybe\" based on the implication of the premise on the hypothesis in {language.capitalize()}:"',]
         os.system(
             f'python -m task_modeling.run {" ".join(params)}'
         )
@@ -138,7 +140,7 @@ if __name__ == '__main__':
         # train task adapter with language adapter
         os.environ['WANDB_NAME'] = f'mt0-{language}-adapter-{dataset}-adapter-100k'
         params = default_params + adapter_adapter_params + lang_params + [
-            f'--output_dir ../results/ner/{language}_adapter_{dataset}_adapter_100k',
+            f'--output_dir ../results/xnli/{language}_adapter_{dataset}_adapter_100k',
             f'--lang_adapter_config ivykopal/{language}_adapter_100k',
             f'--load_lang_adapter ivykopal/{language}_adapter_100k',
         ]
@@ -149,10 +151,10 @@ if __name__ == '__main__':
         # train language adapter with task prompt
         os.environ['WANDB_NAME'] = f'mt0-{language}-adapter-{dataset}-prompt-100k'
         params = default_params + adapter_prompt_params + lang_params + [
-            f'--output_dir ../results/ner/{language}_adapter_{dataset}_prompt_100k',
+            f'--output_dir ../results/xnli/{language}_adapter_{dataset}_prompt_100k',
             f'--lang_adapter_config ivykopal/{language}_adapter_100k',
             f'--load_lang_adapter ivykopal/{language}_adapter_100k',
-            f'--prompt_tuning_init_text "Identify ner tags (ORG, PER, LOC) in the text in {language.capitalize()}:"',
+            f'--prompt_tuning_init_text "Select \"Yes\", \"No\" or \"Maybe\" based on the implication of the premise on the hypothesis in {language.capitalize()}:"',
         ]
         os.system(
             f'python -m task_modeling.run {" ".join(params)}'
@@ -161,7 +163,7 @@ if __name__ == '__main__':
         # train language prompt with task adapter
         os.environ['WANDB_NAME'] = f'mt0-{language}-prompt-{dataset}-adapter-100k'
         params = default_params + prompt_adapter_params + lang_params + [
-            f'--output_dir ../results/ner/{language}_prompt_{dataset}_adapter_100k',
+            f'--output_dir ../results/xnli/{language}_prompt_{dataset}_adapter_100k',
             f'--load_language_prompt ivykopal/{language}_prompt_100k',
         ]
         os.system(
@@ -171,9 +173,9 @@ if __name__ == '__main__':
         # train task prompt with language prompt
         os.environ['WANDB_NAME'] = f'mt0-{language}-prompt-{dataset}-prompt-100k'
         params = default_params + prompt_prompt_params + lang_params + [
-            f'--output_dir ../results/ner/{language}_prompt_{dataset}_prompt_100k',
+            f'--output_dir ../results/xnli/{language}_prompt_{dataset}_prompt_100k',
             f'--load_language_prompt ivykopal/{language}_prompt_100k',
-            f'--prompt_tuning_init_text "Identify ner tags (ORG, PER, LOC) in the text in {language.capitalize()}:"',
+            f'--prompt_tuning_init_text "Select \"Yes\", \"No\" or \"Maybe\" based on the implication of the premise on the hypothesis in {language.capitalize()}:"',
         ]
         os.system(
             f'python -m task_modeling.run {" ".join(params)}'

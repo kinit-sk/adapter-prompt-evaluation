@@ -61,5 +61,7 @@ def convert_language(language):
         return 'hi'
     elif language == 'chinese':
         return 'zh'
+    elif language == 'telugu':
+        return 'te'
     else:
         raise ValueError(f'Invalid language: {language}')

@@ -1,6 +1,5 @@
 import configparser as ConfigParser
 import os
-from scripts.qa import publish_to_hf
 
 default_params = [
     '--model_name_or_path bigscience/mt0-base',
@@ -42,8 +41,8 @@ os.environ['WANDB_WATCH'] = 'all'
 
 
 if __name__ == '__main__':
-    languages = ['english', 'slovak', 'czech', 'german', 'spanish', 'arabic']
-    lang_codes = ['en', 'sk', 'cs', 'de', 'es', 'ar']
+    languages = ['english', 'slovak', 'czech', 'german', 'spanish', 'telugu']
+    lang_codes = ['en', 'sk', 'cs', 'de', 'es', 'te']
 
     config = ConfigParser.ConfigParser()
     config.read('../configs/api.conf')
@@ -56,12 +55,10 @@ if __name__ == '__main__':
         ]
         os.environ['WANDB_NAME'] = f'mt0-{language}-adapter-100k'
         params = default_params + adapter_hyper_params + lang_params + \
-            [f'--output_dir ../results/language/{language}_adapter_100k',]
+           [f'--output_dir ../results/language/{language}_adapter_100k',]
         os.system(
-            f'python -m language_modeling.run {" ".join(params)}'
+           f'python -m language_modeling.run {" ".join(params)}'
         )
-        publish_to_hf(f'{language}_adapter_100k',
-                      f'../results/language/{language}_adapter_100k/wikipedia')
 
         os.environ['WANDB_NAME'] = f'mt0-{language}-prompt-100k'
         params = default_params + prompt_hyper_params + lang_params + \
@@ -72,5 +69,3 @@ if __name__ == '__main__':
         os.system(
             f'python -m language_modeling.run {" ".join(params)}'
         )
-        publish_to_hf(f'{language}_prompt_100k',
-                      f'../results/language/{language}_prompt_100k/{language}_prompt')
