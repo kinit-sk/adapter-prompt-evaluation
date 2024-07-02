@@ -105,7 +105,7 @@ inference_params = [
 if __name__ == '__main__':
     languages = ['english', 'slovak', 'czech', 'german', 'spanish', 'telugu']
     lang_code = ['en', 'sk', 'cs', 'de', 'es', 'te']
-    datasets = ['multiclaim_checkworthy']
+    datasets = ['multiclaim_checkworthy'] * 6
 
     os.environ['WANDB_WATCH'] = 'all'
 
