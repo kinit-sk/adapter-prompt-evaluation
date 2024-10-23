@@ -99,10 +99,26 @@ inference_params = [
     '--full_finetuning'
 ]
 
+def publish_to_hf(name, folder_path):
+    from huggingface_hub import HfApi
+    api = HfApi()
+    api.create_repo(
+        repo_id=f'ivykopal/{name}',
+        token=os.getenv('HF_TOKEN'),
+        repo_type="model",
+        exist_ok=True,
+    )
+    api.upload_folder(
+        folder_path=folder_path,
+        repo_id=f'ivykopal/{name}',
+        repo_type="model",
+        token=os.getenv('HF_TOKEN'),
+    )
+
 
 if __name__ == '__main__':
-    languages = ['english', 'slovak', 'czech', 'german', 'spanish', 'telugu']
-    lang_code = ['en', 'sk', 'cs', 'de', 'es', 'te']
+    languages = ['english', 'german', 'spanish', 'arabic', 'russian', 'chinese']
+    lang_code = ['en', 'de', 'es', 'ar', 'ru', 'zh']
     datasets = ['wikiann'] * 6
 
     os.environ['WANDB_WATCH'] = 'all'
@@ -125,6 +141,8 @@ if __name__ == '__main__':
         os.system(
             f'python -m task_modeling.run {" ".join(params)}'
         )
+        publish_to_hf(f'{dataset}_{code}_adapter_100k',
+                      f'../results/ner/{dataset}_{code}_adapter_100k/{dataset}')
 
         # train only task prompt
         os.environ['WANDB_NAME'] = f'mt0-{dataset}-{code}-prompt-100k'
@@ -134,6 +152,8 @@ if __name__ == '__main__':
         os.system(
             f'python -m task_modeling.run {" ".join(params)}'
         )
+        publish_to_hf(f'{dataset}_{code}_prompt_100k',
+                      f'../results/ner/{dataset}_{code}_prompt_100k/{dataset}_prompt')
 
         # train task adapter with language adapter
         os.environ['WANDB_NAME'] = f'mt0-{language}-adapter-{dataset}-adapter-100k'
@@ -145,6 +165,8 @@ if __name__ == '__main__':
         os.system(
             f'python -m task_modeling.run {" ".join(params)}'
         )
+        publish_to_hf(f'{language}_adapter_{dataset}_adapter_100k',
+                      f'../results/ner/{language}_adapter_{dataset}_adapter_100k/{dataset}')
 
         # train language adapter with task prompt
         os.environ['WANDB_NAME'] = f'mt0-{language}-adapter-{dataset}-prompt-100k'
@@ -157,6 +179,8 @@ if __name__ == '__main__':
         os.system(
             f'python -m task_modeling.run {" ".join(params)}'
         )
+        publish_to_hf(f'{language}_adapter_{dataset}_prompt_100k',
+                      f'../results/ner/{language}_adapter_{dataset}_prompt_100k/{dataset}_prompt')
 
         # train language prompt with task adapter
         os.environ['WANDB_NAME'] = f'mt0-{language}-prompt-{dataset}-adapter-100k'
@@ -167,6 +191,8 @@ if __name__ == '__main__':
         os.system(
             f'python -m task_modeling.run {" ".join(params)}'
         )
+        publish_to_hf(f'{language}_prompt_{dataset}_adapter_100k',
+                      f'../results/ner/{language}_prompt_{dataset}_adapter_100k/{dataset}')
 
         # train task prompt with language prompt
         os.environ['WANDB_NAME'] = f'mt0-{language}-prompt-{dataset}-prompt-100k'
@@ -178,3 +204,6 @@ if __name__ == '__main__':
         os.system(
             f'python -m task_modeling.run {" ".join(params)}'
         )
+        publish_to_hf(f'{language}_prompt_{dataset}_prompt_100k',
+                      f'../results/ner/{language}_prompt_{dataset}_prompt_100k/{dataset}_prompt')
+

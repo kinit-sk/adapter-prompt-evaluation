@@ -39,11 +39,27 @@ prompt_hyper_params = [
 os.environ['WANDB_PROJECT'] = 'mt0-language-modeling'
 os.environ['WANDB_WATCH'] = 'all'
 
+def publish_to_hf(name, folder_path):
+    from huggingface_hub import HfApi
+    api = HfApi()
+    api.create_repo(
+        repo_id=f'ivykopal/{name}',
+        token=os.getenv('HF_TOKEN'),
+        repo_type="model",
+        exist_ok=True,
+    )
+    api.upload_folder(
+        folder_path=folder_path,
+        repo_id=f'ivykopal/{name}',
+        repo_type="model",
+        token=os.getenv('HF_TOKEN'),
+    )
+
 
 if __name__ == '__main__':
-    languages = ['english', 'slovak', 'czech', 'german', 'spanish', 'telugu']
-    lang_codes = ['en', 'sk', 'cs', 'de', 'es', 'te']
-
+    languages = ['arabic', 'bulgarian', 'czech', 'german', 'greek', 'english', 'spanish', 'malayalam', 'romanian', 'russian', 'slovenian', 'slovak', 'swahili', 'telugu', 'urdu', 'chinese']
+    lang_codes = ['ar', 'bg', 'cs', 'de', 'el', 'en', 'es', 'ml', 'ro', 'ru', 'sl', 'sk', 'sw', 'te', 'ur', 'zh']
+    
     config = ConfigParser.ConfigParser()
     config.read('../configs/api.conf')
     os.environ['HF_TOKEN'] = config.get('huggingface', 'HF_API_KEY')
@@ -59,6 +75,7 @@ if __name__ == '__main__':
         os.system(
            f'python -m language_modeling.run {" ".join(params)}'
         )
+        publish_to_hf(f'{language}_adapter_100k', f'../results/language/aya101-{language}_adapter_100k/wikipedia')
 
         os.environ['WANDB_NAME'] = f'mt0-{language}-prompt-100k'
         params = default_params + prompt_hyper_params + lang_params + \
@@ -69,3 +86,4 @@ if __name__ == '__main__':
         os.system(
             f'python -m language_modeling.run {" ".join(params)}'
         )
+        publish_to_hf(f'{language}_prompt_100k', f'../results/language/aya101-{language}_prompt_100k/{language}_prompt')

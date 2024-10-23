@@ -79,6 +79,22 @@ def get_dataset_from_language(language, task):
             return 'tequad'
         elif language == 'english':
             return 'mlqa'
+        elif language == 'chinese':
+            return 'zhsquad'
+        elif language == 'russian':
+            return 'rusquad'
+        elif language == 'arabic':
+            return 'arabic_squad'
+        elif language == 'swahili':
+            return 'swsquad'
+        elif language == 'greek' or language == 'romanian':
+            return 'xquad'
+        elif language == 'slovenian':
+            return 'slosquad'
+        elif language == 'malayalam':
+            return 'indicqa'
+        elif language == 'urdu':
+            return 'uqa'
         else:
             return 'mlqa'
     elif task == 'ner':
@@ -111,14 +127,14 @@ if __name__ == '__main__':
         
         param_list = []
         # inference
-        params = default_params + lang_params + inference_params + [f'--output_dir ../results/ner2/inference2/{language}_{dataset_name}_inference']
+        params = default_params + lang_params + inference_params + [f'--output_dir ../results/ner3/inference/{language}_{dataset_name}_inference']
         param_list.append(params)
         
         # only task adapter
         params = default_params + lang_params + adapter_params + [
-            f'--output_dir ../results/ner/inference/{trained_language}/{language}_adapter_inference_100k',
-            f'--adapter_config ../results/ner/{trained_dataset_name}_{trained_lang_code}_adapter_100k/{trained_dataset_name}/adapter_config.json',
-            f'--load_adapter ../results/ner/{trained_dataset_name}_{trained_lang_code}_adapter_100k/{trained_dataset_name}',
+            f'--output_dir ../results/ner3/inference/{trained_language}/{language}_adapter_inference_100k',
+            f'--adapter_config ../results/ner3/{trained_dataset_name}_{trained_lang_code}_adapter_100k/{trained_dataset_name}/adapter_config.json',
+            f'--load_adapter ../results/ner3/{trained_dataset_name}_{trained_lang_code}_adapter_100k/{trained_dataset_name}',
         ]
         param_list.append(params)
         
