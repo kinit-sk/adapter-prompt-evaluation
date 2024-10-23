@@ -69,8 +69,7 @@ class MLQA(Dataset):
 
             self.dataset = DatasetDict(
                 {'train': train_dataset, 'validation': valid_dataset, 'test': test_dataset})
-        
-        print(self.dataset)
+
 
     def _convert2squad(self, data):
         rows = []
@@ -114,21 +113,19 @@ class MLQA(Dataset):
     def post_processing_function(
         self, examples: datasets.Dataset, features: datasets.Dataset, outputs: EvalLoopOutput, stage="eval", tokenizer: Any = None
     ):
-        # Decode the predicted tokens.
         preds = outputs.predictions
         if isinstance(preds, tuple):
             preds = preds[0]
+
         preds = np.where(preds != -100, preds, tokenizer.pad_token_id)
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
 
-        # Build a map example to its corresponding features.
         example_id_to_index = {k: i for i, k in enumerate(examples["id"])}
         feature_per_example = {
             example_id_to_index[feature["example_id"]]: i for i, feature in enumerate(features)}
         predictions = {}
-        # Let's loop over all the examples!
+        
         for example_index, example in enumerate(examples):
-            # This is the index of the feature associated to the current example.
             feature_index = feature_per_example[example_index]
             predictions[example["id"]] = decoded_preds[feature_index]
 
@@ -184,7 +181,111 @@ class SlovakSQuAD(MLQA):
             'validation': valid,
             'test': test
         })
-        print(self.dataset)
+
+
+class ChineseSQuAD(MLQA):
+    def __init__(
+        self,
+        benchmark_name: str = 'squad',
+        subset: str = None,
+        split: str = None,
+        language: str = 'chinese'
+    ) -> None:
+        self.language = convert_language(language)
+        super().__init__(benchmark_name, subset, split)
+        self.splits = {
+            'train': 'train',
+            'validation': 'validation',
+            'test': 'test',
+        }
+        
+    def load(self) -> None:
+        with open('../data/ChineseSQuAD/train-v1.1-zh.json', 'r') as f:
+            train_data = json.load(f)
+
+        with open('../data/ChineseSQuAD/dev-v1.1-zh.json', 'r') as f:
+            test_data = json.load(f)
+            
+        train_data = self._convert2squad(train_data)
+        test_data = self._convert2squad(test_data)
+
+        train = HFDataset.from_pandas(train_data).train_test_split(test_size=0.15, seed=42)
+        valid = train['test']
+        train = train['train']
+        
+        test = HFDataset.from_pandas(test_data)
+
+        valid = valid.filter(lambda x: len(x['answers']['text']) > 0)
+        test = test.filter(lambda x: len(x['answers']['text']) > 0)
+
+        self.dataset = DatasetDict({
+            'train': train,
+            'validation': valid,
+            'test': test
+        })
+
+
+class XQuAD(MLQA):
+    def __init__(
+        self,
+        benchmark_name: str = 'xquad',
+        subset: str = None,
+        split: str = None,
+        language: str = 'greek'
+    ) -> None:
+        self.language = convert_language(language)
+        super().__init__(benchmark_name, subset, split)
+        self.splits = {
+            'train': 'train',
+            'validation': 'validation',
+            'test': 'test',
+        }
+        
+    def load(self) -> None:
+        data = load_dataset('google/xquad', f'xquad.{self.language}', split='validation')
+        
+        self.dataset = DatasetDict({
+            'train': None,
+            'validation': None,
+            'test': data
+        })
+
+
+class KenSwQuAD(MLQA):
+    def __init__(
+        self,
+        benchmark_name: str = 'squad',
+        subset: str = None,
+        split: str = None,
+        language: str = 'swahili'
+    ) -> None:
+        self.language = convert_language(language)
+        super().__init__(benchmark_name, subset, split)
+        self.splits = {
+            'train': 'train',
+            'validation': 'validation',
+            'test': 'test',
+        }
+        
+    def load(self) -> None:
+        data = load_dataset('lightblue/KenSwQuAD', split='train')
+        data = data.map(lambda x: {'answers': {'text': x['answers']['text'], 'answer_start': []}})
+        
+        data = data.remove_columns('Story_ID')
+        ids = [f'{i}' for i in range(len(data))]
+        data = data.add_column('id', ids)
+        
+        data = data.train_test_split(test_size=0.15, seed=42)
+        test = data['test']
+        train = data['train'].train_test_split(test_size=0.15, seed=42)
+        valid = train['test']
+        train = train['train']
+        
+        self.dataset = DatasetDict({
+            'train': train,
+            'validation': valid,
+            'test': test
+        })
 
 
 class CSSQuAD(MLQA):
@@ -228,8 +329,311 @@ class CSSQuAD(MLQA):
             'validation': valid,
             'test': test
         })
-        print(self.dataset)
+
+
+class SlovenianSQuAD(MLQA):
+    def __init__(
+        self,
+        benchmark_name: str = 'squad',
+        subset: str = None,
+        split: str = None,
+        language: str = 'slovenian'
+    ) -> None:
+        self.language = convert_language(language)
+        super().__init__(benchmark_name, subset, split)
+        self.splits = {
+            'train': 'train',
+            'validation': 'validation',
+            'test': 'test',
+        }
+    
+    def _convert2squad(self, data):            
+        df = pd.DataFrame(data['data'])
+        return df
         
+    def load(self) -> None:
+        with open('../data/SlovenianSQuAD/squad2-slo-mt-train.json', 'r') as f:
+            train_data = json.load(f)
+
+        with open('../data/SlovenianSQuAD/squad2-slo-mt-dev.json', 'r') as f:
+            test_data = json.load(f)
+            
+        train_data = self._convert2squad(train_data)
+        test_data = self._convert2squad(test_data)
+        
+        
+        train = HFDataset.from_pandas(train_data).train_test_split(test_size=0.15, seed=42)
+        valid = train['test']
+        train = train['train']
+        
+        test = HFDataset.from_pandas(test_data)
+        
+        valid = valid.filter(lambda x: len(x['answers']['text']) > 0)
+        test = test.filter(lambda x: len(x['answers']['text']) > 0)
+        
+        self.dataset = DatasetDict({
+            'train': train,
+            'validation': valid,
+            'test': test
+        })
+        
+
+class IndicQA(MLQA):
+    def __init__(
+        self,
+        benchmark_name: str = 'indic_qa',
+        subset: str = None,
+        split: str = None,
+        language: str = 'malaayalam'
+    ) -> None:
+        self.language = convert_language(language)
+        super().__init__(benchmark_name, subset, split)
+        self.splits = {
+            'train': 'train',
+            'validation': 'validation',
+            'test': 'test',
+        }
+        
+    def load(self) -> None:
+        data = load_dataset('ai4bharat/IndicQA', f'indicqa.ml', split='test')
+        
+        self.dataset = DatasetDict({
+            'train': None,
+            'validation': None,
+            'test': data
+        })
+
+
+class UQA(MLQA):
+    def __init__(
+        self,
+        benchmark_name: str = 'uqa',
+        subset: str = None,
+        split: str = None,
+        language: str = 'urdu'
+    ) -> None:
+        self.language = convert_language(language)
+        super().__init__(benchmark_name, subset, split)
+        self.splits = {
+            'train': 'train',
+            'validation': 'validation',
+            'test': 'test',
+        }
+        
+    def _convert2squad(self, data):
+        rows = []
+        for row in data:
+            index = row['id']
+            if any(d['id'] == index for d in rows):
+                for d in rows:
+                    if d['id'] == index:
+                        d['answers']['text'].append(row['answer'])
+                        d['answers']['answer_start'].append(row['answer_start'])
+            else:
+                text = row['answer']
+                answer_start = row['answer_start']
+                answers = {'text': [text], 'answer_start': [answer_start]}
+                rows.append({
+                    'context': row['context'],
+                    'question': row['question'],
+                    'answers': answers,
+                    'id': index
+                })
+            
+        df = pd.DataFrame(rows)
+        return df
+    
+        
+    def load(self) -> None:
+        train = load_dataset('uqa/UQA', split='train')
+        test = load_dataset('uqa/UQA', split='validation')
+        
+        train = self._convert2squad(train)
+        test = self._convert2squad(test)
+        
+        train = HFDataset.from_pandas(train).train_test_split(test_size=0.15, seed=42)
+        valid = train['test']
+        train = train['train']
+        
+        test = HFDataset.from_pandas(test)
+        
+        valid = valid.filter(lambda x: len(x['answers']['text']) > 0)
+        test = test.filter(lambda x: len(x['answers']['text']) > 0)
+        
+        self.dataset = DatasetDict({
+            'train': train,
+            'validation': valid,
+            'test': test
+        })
+
+
+class ArabicSQuAD(MLQA):
+    def __init__(
+        self,
+        benchmark_name: str = 'arabic_squad',
+        subset: str = None,
+        split: str = None,
+        language: str = 'arabic'
+    ) -> None:
+        self.language = convert_language(language)
+        super().__init__(benchmark_name, subset, split)
+        self.splits = {
+            'train': 'train',
+            'validation': 'validation',
+            'test': 'test',
+        }
+        
+    def _convert2squad(self, data):
+        rows = []
+        for row in data:
+            index = row['index']
+            text = row['text']
+            answer_start = row['answer_start']
+            answers = {'text': [text], 'answer_start': [answer_start]}
+            rows.append({
+                'context': row['context'],
+                'question': row['question'],
+                'answers': answers,
+                'id': index
+            })
+            
+        df = pd.DataFrame(rows)
+        return df
+        
+    def load(self):
+        data = load_dataset('Mostafa3zazi/Arabic_SQuAD', split='train')
+        data = self._convert2squad(data)
+        data = HFDataset.from_pandas(data)
+        
+        data = data.train_test_split(test_size=0.15, seed=42)
+        test = data['test']
+        train = data['train'].train_test_split(test_size=0.15, seed=42)
+        valid = train['test']
+        train = train['train']
+        
+        self.dataset = DatasetDict({
+            'train': train,
+            'validation': valid,
+            'test': test
+        })
+        
+    def preprocess(self, examples):
+        questions = examples['question']
+        contexts = examples['context']
+        answers = examples['answers']
+
+        def generate_input(_question, _context):
+            return " ".join(["question:", _question.lstrip(), "context:", _context.lstrip()])
+
+        inputs = [generate_input(question, context)
+                  for question, context in zip(questions, contexts)]
+        targets = [answer["text"][0] if len(
+            answer["text"]) > 0 else "" for answer in answers]
+        return inputs, targets
+
+    def post_processing_function(
+        self, examples: datasets.Dataset, features: datasets.Dataset, outputs: EvalLoopOutput, stage="eval", tokenizer: Any = None
+    ):
+        preds = outputs.predictions
+        if isinstance(preds, tuple):
+            preds = preds[0]
+
+        preds = np.where(preds != -100, preds, tokenizer.pad_token_id)
+        decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
+
+        example_id_to_index = {k: i for i, k in enumerate(examples["id"])}
+        feature_per_example = {
+            example_id_to_index[feature["example_id"]]: i for i, feature in enumerate(features)}
+        predictions = {}
+
+        for example_index, example in enumerate(examples):
+            feature_index = feature_per_example[example_index]
+            predictions[example["id"]] = decoded_preds[feature_index]
+
+        formatted_predictions = [
+            {"id": k, "prediction_text": '--' if v == '' else v} for k, v in predictions.items()]
+
+        references = [{"id": ex["id"], "answers": ex['answers']}
+                      for ex in examples]
+        return EvalPrediction(predictions=formatted_predictions, label_ids=references)
+
+    def get_metric(self):
+        return evaluate.load('squad')
+    
+    
+class SberSQuAD(MLQA):
+    def __init__(
+        self,
+        benchmark_name: str = 'sber_squad',
+        subset: str = None,
+        split: str = None,
+        language: str = 'russian'
+    ) -> None:
+        self.language = convert_language(language)
+        super().__init__(benchmark_name, subset, split)
+        self.splits = {
+            'train': 'train',
+            'validation': 'validation',
+            'test': 'test',
+        }
+        
+    def load(self) -> None:
+        train = load_dataset('kuznetsoffandrey/sberquad', split='train')
+        validation = load_dataset('kuznetsoffandrey/sberquad', split='validation')
+        test = load_dataset('kuznetsoffandrey/sberquad', split='test')
+        
+        train = train.cast_column('id', datasets.Value("string"))
+        validation = validation.cast_column('id', datasets.Value("string"))
+        test = test.cast_column('id', datasets.Value("string"))
+        
+        self.dataset = DatasetDict({
+            'train': train,
+            'validation': validation,
+            'test': test
+        })
+    
+    def preprocess(self, examples):
+        questions = examples['question']
+        contexts = examples['context']
+        answers = examples['answers']
+
+        def generate_input(_question, _context):
+            return " ".join(["question:", _question.lstrip(), "context:", _context.lstrip()])
+
+        inputs = [generate_input(question, context)
+                  for question, context in zip(questions, contexts)]
+        targets = [answer["text"][0] if len(
+            answer["text"]) > 0 else "" for answer in answers]
+        return inputs, targets
+
+    def post_processing_function(
+        self, examples: datasets.Dataset, features: datasets.Dataset, outputs: EvalLoopOutput, stage="eval", tokenizer: Any = None
+    ):
+        preds = outputs.predictions
+        if isinstance(preds, tuple):
+            preds = preds[0]
+        preds = np.where(preds != -100, preds, tokenizer.pad_token_id)
+        decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
+
+        example_id_to_index = {k: i for i, k in enumerate(examples["id"])}
+        feature_per_example = {
+            example_id_to_index[feature["example_id"]]: i for i, feature in enumerate(features)}
+        predictions = {}
+
+        for example_index, example in enumerate(examples):
+            feature_index = feature_per_example[example_index]
+            predictions[example["id"]] = decoded_preds[feature_index]
+
+        formatted_predictions = [
+            {"id": k, "prediction_text": '--' if v == '' else v} for k, v in predictions.items()]
+
+        references = [{"id": ex["id"], "answers": ex['answers']}
+                      for ex in examples]
+        return EvalPrediction(predictions=formatted_predictions, label_ids=references)
+
+    def get_metric(self):
+        return evaluate.load('squad')
+                     
 
 class TeQuAD(MLQA):
     def __init__(
@@ -258,7 +662,6 @@ class TeQuAD(MLQA):
                 'id': str(idx)
             })
         
-        # convert to pandas dataframe
         df = pd.DataFrame(rows)
         return df
 
@@ -275,7 +678,6 @@ class TeQuAD(MLQA):
         with open('../data/TeQuAD/Train/real_span_tel.txt', 'r') as f:
             real_span_train = f.readlines()
             
-        # test data
         with open('../data/TeQuAD/Test/Corrected/corrected_ans_tel.txt', 'r') as f:
             real_ans_test = f.readlines()
             
@@ -305,7 +707,6 @@ class TeQuAD(MLQA):
             'validation': valid,
             'test': test
         })
-        print(self.dataset)
 
     def preprocess(self, examples):
         questions = examples['question']
@@ -324,21 +725,19 @@ class TeQuAD(MLQA):
     def post_processing_function(
         self, examples: datasets.Dataset, features: datasets.Dataset, outputs: EvalLoopOutput, stage="eval", tokenizer: Any = None
     ):
-        # Decode the predicted tokens.
         preds = outputs.predictions
         if isinstance(preds, tuple):
             preds = preds[0]
+            
         preds = np.where(preds != -100, preds, tokenizer.pad_token_id)
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
 
-        # Build a map example to its corresponding features.
         example_id_to_index = {k: i for i, k in enumerate(examples["id"])}
         feature_per_example = {
             example_id_to_index[feature["example_id"]]: i for i, feature in enumerate(features)}
         predictions = {}
-        # Let's loop over all the examples!
+
         for example_index, example in enumerate(examples):
-            # This is the index of the feature associated to the current example.
             feature_index = feature_per_example[example_index]
             predictions[example["id"]] = decoded_preds[feature_index]
 
@@ -399,10 +798,10 @@ class WikiANN(Dataset):
     def post_processing_function(
         self, examples: datasets.Dataset, features: datasets.Dataset, outputs: EvalLoopOutput, stage="eval", tokenizer: Any = None
     ):
-        # Decode the predicted tokens.
         preds = outputs.predictions
         if isinstance(preds, tuple):
             preds = preds[0]
+
         preds = np.where(preds != -100, preds, tokenizer.pad_token_id)
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
         
@@ -415,7 +814,7 @@ class WikiANN(Dataset):
     
     def get_metric(self):
         return Metric(name='span_f1', compute=span_f1)
-    
+        
     
 class XNLI(Dataset):
     def __init__(
@@ -451,12 +850,10 @@ class XNLI(Dataset):
             df_dev = pd.read_csv('../data/SKANLI/anli_sk_validation.csv')
             df_test = pd.read_csv('../data/SKANLI/anli_sk_test.csv')
             
-            # remove translated column
             df_train = df_train.drop(columns=['translated'])
             df_dev = df_dev.drop(columns=['translated'])
             df_test = df_test.drop(columns=['translated'])
             
-            # rename claim to hypothesis
             df_train = df_train.rename(columns={'claim': 'hypothesis', 'evidence': 'premise'})
             df_dev = df_dev.rename(columns={'claim': 'hypothesis', 'evidence': 'premise'})
             df_test = df_test.rename(columns={'claim': 'hypothesis', 'evidence': 'premise'})
@@ -466,8 +863,43 @@ class XNLI(Dataset):
                 'validation': HFDataset.from_pandas(df_dev),
                 'test': HFDataset.from_pandas(df_test)
             })
-        elif self.language == 'te':
+        elif self.language == 'te' or self.language == 'ml':
             self.dataset = load_dataset('Divyanshu/indicxnli', name=f'{self.language}')
+        elif self.language == 'ro':
+            with open('../data/RONLI/train.json', 'r') as f:
+                train_data = json.load(f)
+
+            with open('../data/RONLI/validation.json', 'r') as f:
+                valid_data = json.load(f)
+
+            with open('../data/RONLI/test.json', 'r') as f:
+                test_data = json.load(f)
+                
+            train_df = pd.DataFrame(train_data)
+            valid_df = pd.DataFrame(valid_data)
+            test_df = pd.DataFrame(test_data)
+            
+            train_df = train_df.rename(columns={'sentence1': 'premise', 'sentence2': 'hypothesis'})
+            valid_df = valid_df.rename(columns={'sentence1': 'premise', 'sentence2': 'hypothesis'})
+            test_df = test_df.rename(columns={'sentence1': 'premise', 'sentence2': 'hypothesis'})
+            
+            train_df['label'] = train_df['label'].map({0: 2, 1: 0, 2: -1, 3: 1})
+            valid_df['label'] = valid_df['label'].map({0: 2, 1: 0, 2: -1, 3: 1})
+            test_df['label'] = test_df['label'].map({0: 2, 1: 0, 2: -1, 3: 1})
+            
+            train_df = train_df[train_df['label'] != -1]
+            valid_df = valid_df[valid_df['label'] != -1]
+            test_df = test_df[test_df['label'] != -1]
+            
+            self.dataset = DatasetDict({
+                'train': HFDataset.from_pandas(train_df),
+                'validation': HFDataset.from_pandas(valid_df),
+                'test': HFDataset.from_pandas(test_df)
+            })
+        elif self.language == 'sl':
+            data = load_dataset('cjvt/si_nli', 'public')
+            data = data.map(lambda x: {'label': 0 if x['label'] == 'entailment' else 1 if x['label'] == 'neutral' else 2})
+            self.dataset = data
         else:
             self.dataset = load_dataset('xnli', name=f'{self.language}')
 
@@ -513,10 +945,10 @@ class XNLI(Dataset):
     def post_processing_function(
         self, examples: datasets.Dataset, features: datasets.Dataset, outputs: EvalLoopOutput, stage="eval", tokenizer: Any = None
     ):
-        # Decode the predicted tokens.
         preds = outputs.predictions
         if isinstance(preds, tuple):
             preds = preds[0]
+
         preds = np.where(preds != -100, preds, tokenizer.pad_token_id)
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
         
@@ -609,9 +1041,7 @@ class MultiClaimCheckWorthy(Dataset):
         return inputs, targets
     
     def convert_label(self, texts):
-        # get the index of the label, if it is not in label_names, if there is No in answer use 0, if there is yes use 1
         return [self.label_names.index(text) if text in self.label_names else 0 if 'No' in text else 1 for text in texts]
-        
     
     def preprocess_validation_function(
         self,
@@ -625,10 +1055,10 @@ class MultiClaimCheckWorthy(Dataset):
     def post_processing_function(
         self, examples: datasets.Dataset, features: datasets.Dataset, outputs: EvalLoopOutput, stage="eval", tokenizer: Any = None
     ):
-        # Decode the predicted tokens.
         preds = outputs.predictions
         if isinstance(preds, tuple):
             preds = preds[0]
+            
         preds = np.where(preds != -100, preds, tokenizer.pad_token_id)
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
         decoded_preds = self.convert_label(decoded_preds)
@@ -637,7 +1067,6 @@ class MultiClaimCheckWorthy(Dataset):
                 
         labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
         decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
-        # convert decoded_labels to 0 and 1
         decoded_labels = self.convert_label(decoded_labels)
 
         return EvalPrediction(predictions=decoded_preds, label_ids=decoded_labels)
@@ -676,7 +1105,6 @@ class FEVERNLI(Dataset):
         labels = examples['label']
         
         def generate_input(_premise, _hypothesis):
-            # TODO: Need to change prompt to climate fever prompt
             return f'{_premise} \n\nQuestion: Does this imply that \"{_hypothesis}\"? Yes, no, or maybe?'
 
         inputs = [generate_input(premise, hypothesis) for premise, hypothesis in zip(premises, hypotheses)]
@@ -698,7 +1126,6 @@ class FEVERNLI(Dataset):
     def post_processing_function(
         self, examples: datasets.Dataset, features: datasets.Dataset, outputs: EvalLoopOutput, stage="eval", tokenizer: Any = None
     ):
-        # Decode the predicted tokens.
         preds = outputs.predictions
         if isinstance(preds, tuple):
             preds = preds[0]

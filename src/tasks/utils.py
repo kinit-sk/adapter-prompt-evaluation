@@ -63,5 +63,11 @@ def convert_language(language):
         return 'zh'
     elif language == 'telugu':
         return 'te'
+    elif language == 'swahili':
+        return 'sw'
+    elif language == 'urdu':
+        return 'ur'
+    elif language == 'malayalam':
+        return 'ml'
     else:
         raise ValueError(f'Invalid language: {language}')
