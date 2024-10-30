@@ -64,9 +64,13 @@ python -m scripts.crosslingual --trained_language english --test_languages germa
 If you use the code or information from this repository, please cite our paper, which will be available on arXiv.
 
 ```bibtex
-@misc{vykopal2024prompteval,
+@misc{vykopal2024softlanguagepromptslanguage,
       title={Soft Language Prompts for Language Transfer}, 
       author={Ivan Vykopal and Simon Ostermann and Marián Šimko},
       year={2024},
+      eprint={2407.02317},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2407.02317}, 
 }
 ```
