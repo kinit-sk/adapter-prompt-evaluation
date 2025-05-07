@@ -1,6 +1,6 @@
 # Soft Language Prompts for Language Transfer
 
-This is the source code for the paper _Soft Language Prompts for Language Transfer_.
+This is the source code for the paper [_Soft Language Prompts for Language Transfer_](https://aclanthology.org/2025.naacl-long.517/).
 
 ## Abstract
 
@@ -61,16 +61,25 @@ python -m scripts.crosslingual --trained_language english --test_languages germa
 
 ## Paper citing
 
-If you use the code or information from this repository, please cite our paper, which will be available on arXiv.
+If you use the code or information from this repository, please cite our paper, which is available in [ACL Anthology](https://aclanthology.org/2025.naacl-long.517/).
 
 ```bibtex
-@misc{vykopal2024softlanguagepromptslanguage,
-      title={Soft Language Prompts for Language Transfer}, 
-      author={Ivan Vykopal and Simon Ostermann and Marián Šimko},
-      year={2024},
-      eprint={2407.02317},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2407.02317}, 
+@inproceedings{vykopal-etal-2025-soft,
+    title = "Soft Language Prompts for Language Transfer",
+    author = "Vykopal, Ivan  and
+      Ostermann, Simon  and
+      Simko, Marian",
+    editor = "Chiruzzo, Luis  and
+      Ritter, Alan  and
+      Wang, Lu",
+    booktitle = "Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers)",
+    month = apr,
+    year = "2025",
+    address = "Albuquerque, New Mexico",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2025.naacl-long.517/",
+    pages = "10294--10313",
+    ISBN = "979-8-89176-189-6",
+    abstract = "Cross-lingual knowledge transfer, especially between high- and low-resource languages, remains challenging in natural language processing (NLP). This study offers insights for improving cross-lingual NLP applications through the combination of parameter-efficient fine-tuning methods. We systematically explore strategies for enhancing cross-lingual transfer through the incorporation of language-specific and task-specific adapters and soft prompts. We present a detailed investigation of various combinations of these methods, exploring their efficiency across 16 languages, focusing on 10 mid- and low-resource languages. We further present to our knowledge the first use of soft prompts for language transfer, a technique we call soft language prompts. Our findings demonstrate that in contrast to claims of previous work, a combination of language and task adapters does not always work best; instead, combining a soft language prompt with a task adapter outperforms most configurations in many cases."
 }
 ```
